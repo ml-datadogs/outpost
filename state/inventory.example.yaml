@@ -1,0 +1,42 @@
+# Example inventory shape (NOT real). The live file is state/inventory.yaml
+# (plaintext, gitignored) or state/inventory.enc.yaml (SOPS-encrypted, committable).
+# Outpost manages this file for you via `provision` / `rotate` / `monitor`.
+version: 1
+nodes:
+  - id: abc123
+    name: zomro-nl-abc123
+    provider: zomro
+    region: nl
+    country: NL
+    ip: 203.0.113.10
+    ssh_user: root
+    ssh_port: 22
+    status: active
+    created_at: "2026-06-05T19:00:00+00:00"
+    retire_after: null
+    tls_domain: null
+    sni: www.bing.com
+    insecure: true
+    ports:
+      hysteria2: 443
+      trojan: 8443
+      vless_reality: 2053
+    protocols: [hysteria2, trojan, vless-reality]
+    secrets:
+      hysteria2_password: EXAMPLE_do_not_use
+      trojan_password: EXAMPLE_do_not_use
+      reality_uuid: 00000000-0000-0000-0000-000000000000
+      reality_private_key: EXAMPLE
+      reality_public_key: EXAMPLE
+      reality_short_id: deadbeef
+    health:
+      checked_at: null
+      reachable: null
+      alive: null
+      latency_ms: null
+      source: null
+      note: null
+    tags: [managed]
+    provider_ref:
+      elid: "555"
+      name: zomro-nl-abc123

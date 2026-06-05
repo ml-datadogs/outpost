@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+
+# Secrets / local config
+.env
+*.pem
+*.key
+age.key
+keys.txt
+ssh/
+secrets/
+
+# Decrypted inventory must NEVER be committed. Only the *.enc.yaml is safe.
+state/inventory.yaml
+state/*.plain.yaml
+
+# Rendered subscriptions (contain live credentials)
+dist-subs/
+*.surge.conf
+*.happ.txt
+
+# Node / worker
+node_modules/
+worker/.wrangler/
+.dev.vars
+
+# OS
+.DS_Store

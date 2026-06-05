@@ -1,0 +1,15 @@
+name = "outpost-subs"
+main = "src/index.js"
+compatibility_date = "2024-11-01"
+workers_dev = true
+
+# Create the namespace once and paste its id here:
+#   npx wrangler kv namespace create SUBS
+kv_namespaces = [
+  { binding = "SUBS", id = "REPLACE_WITH_KV_NAMESPACE_ID" }
+]
+
+# Secret (do NOT put it here). Set it with:
+#   npx wrangler secret put SUB_TOKEN
+# Optional custom domain via a route:
+# routes = [{ pattern = "subs.example.com/*", zone_name = "example.com" }]

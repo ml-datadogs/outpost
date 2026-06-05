@@ -1,0 +1,15 @@
+{
+  "name": "outpost-subs",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Token-gated Cloudflare Worker serving Outpost Surge/Happ subscriptions from KV.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "kv:create": "wrangler kv namespace create SUBS",
+    "secret": "wrangler secret put SUB_TOKEN"
+  },
+  "devDependencies": {
+    "wrangler": "^3.80.0"
+  }
+}

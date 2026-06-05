@@ -1,0 +1,80 @@
+name: monitor-and-rotate
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # every 15 minutes
+  workflow_dispatch: {}
+
+concurrency:
+  group: outpost-monitor
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # commit updated state back
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    env:
+      AEZA_API_KEY: ${{ secrets.AEZA_API_KEY }}
+      ZOMRO_AUTH: ${{ secrets.ZOMRO_AUTH }}
+      OUTPOST_TLS_DOMAIN: ${{ secrets.OUTPOST_TLS_DOMAIN }}
+      OUTPOST_SSH_PRIVATE_KEY_FILE: ${{ github.workspace }}/.ssh/outpost
+      OUTPOST_SSH_PUBLIC_KEY_FILE: ${{ github.workspace }}/.ssh/outpost.pub
+      SOPS_AGE_KEY_FILE: ${{ github.workspace }}/.age/outpost.key
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install project
+        run: |
+          uv sync --frozen
+          # sops for inventory decryption
+          SOPS_VER=v3.9.0
+          curl -fsSL -o /usr/local/bin/sops "https://github.com/getsops/sops/releases/download/${SOPS_VER}/sops-${SOPS_VER}.linux.amd64"
+          chmod +x /usr/local/bin/sops
+
+      - name: Materialize secrets
+        run: |
+          mkdir -p .ssh .age && chmod 700 .ssh .age
+          printf '%s' "${{ secrets.AGE_KEY }}" > .age/outpost.key
+          printf '%s\n' "${{ secrets.OUTPOST_SSH_PRIVATE_KEY }}" > .ssh/outpost
+          printf '%s\n' "${{ secrets.OUTPOST_SSH_PUBLIC_KEY }}" > .ssh/outpost.pub
+          chmod 600 .ssh/outpost .ssh/outpost.pub .age/outpost.key
+
+      - name: Monitor liveness + apply probe transitions
+        run: uv run outpost monitor
+
+      - name: Rotate blocked/down nodes and reap retired
+        run: uv run outpost rotate --reap
+
+      - name: Render subscriptions
+        run: uv run outpost render --out dist-subs
+
+      - name: Publish subscriptions to Cloudflare KV
+        if: ${{ vars.CF_OK == 'true' }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          KV_NAMESPACE_ID: ${{ secrets.KV_NAMESPACE_ID }}
+        run: |
+          npx --yes wrangler kv key put --namespace-id "$KV_NAMESPACE_ID" surge --path dist-subs/outpost.surge.conf
+          npx --yes wrangler kv key put --namespace-id "$KV_NAMESPACE_ID" happ  --path dist-subs/outpost.happ.txt
+
+      - name: Commit updated state
+        run: |
+          git config user.name  "outpost-bot"
+          git config user.email "outpost-bot@users.noreply.github.com"
+          git add state/
+          if ! git diff --cached --quiet; then
+            git commit -m "monitor: update fleet state [skip ci]"
+            git push
+          else
+            echo "no state changes"
+          fi
+          # Note: set repo variable CF_OK=true once the Worker + KV namespace exist
+          # so the "Publish subscriptions to Cloudflare KV" step runs.

@@ -1,0 +1,53 @@
+# Provider / region registry. Safe to commit (NO secrets here).
+# Eligibility for hosting an exit node requires THREE gates:
+#   1. region.country != RU            (a RU exit bypasses nothing)
+#   2. region.enabled == true          (reachability-gated; the probe flips this)
+#   3. provider.policy_ok == true      (accepts RU users + usable payment)
+#
+# Populate `regions` from live APIs:  outpost discover --provider aeza
+# then copy the printed product_ref / country values in here and set canary hosts.
+version: 1
+providers:
+  - name: aeza
+    policy_ok: true
+    sanctioned: true   # OFAC 2025: usable but risky; never the sole provider
+    notes: "RU-friendly billing + hourly. Pin to NON-RU regions (DE/NL/FI). Sanctioned -> diversify."
+    regions:
+      # Example shape - replace product_id/canary with values from `outpost discover`.
+      - code: "Germany"
+        country: DE
+        city: "Frankfurt"
+        canary: null
+        enabled: false
+        product_ref: { product_id: "" }
+      - code: "Netherlands"
+        country: NL
+        city: "Amsterdam"
+        canary: null
+        enabled: false
+        product_ref: { product_id: "" }
+      - code: "Finland"
+        country: FI
+        city: "Helsinki"
+        canary: null
+        enabled: false
+        product_ref: { product_id: "" }
+
+  - name: zomro
+    policy_ok: true
+    sanctioned: false
+    notes: "NL-based, RU-friendly. Use NL (non-RU). Orders provision via root password."
+    regions:
+      - code: "nl"
+        country: NL
+        city: "Netherlands"
+        canary: null
+        enabled: false
+        product_ref: { pricelist: "", datacenter: "", os: "" }
+
+  # Documented EXCLUSION (kept for visibility; not eligible).
+  - name: hetzner
+    policy_ok: false   # bans/suspends RU/CIS accounts and freezes payment
+    sanctioned: false
+    notes: "EXCLUDED on policy gate. Network-reachable but account/payment hostile to RU users."
+    regions: []

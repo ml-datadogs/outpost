@@ -1,0 +1,16 @@
+# SOPS creation rules. Encrypts only the inventory (which holds live node secrets).
+#
+# Setup (one time):
+#   brew install sops age
+#   age-keygen -o ~/.config/sops/age/outpost.key      # prints the public key
+#   # copy the "Public key: age1..." value below, replacing the placeholder
+#   export SOPS_AGE_KEY_FILE=~/.config/sops/age/outpost.key
+#
+# Then encrypt the working file:
+#   sops --encrypt state/inventory.yaml > state/inventory.enc.yaml && rm state/inventory.yaml
+#
+# Outpost auto-detects state/inventory.enc.yaml and uses sops transparently.
+creation_rules:
+  - path_regex: state/.*\.enc\.yaml$
+    # Replace with YOUR age public key from age-keygen.
+    age: "age17ejazzrn9766t7hx8am22vlqe7ja5vvgcgyd6dx3wpzky2h934xsg3686l"

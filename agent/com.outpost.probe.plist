@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  launchd agent for the Outpost reachability probe.
+
+  Install:
+    1. Edit the uv path / checkout path below to match your machine
+       (find uv with: which uv).
+    2. The probe needs passwordless `sudo route` for the host-route bypass. Add a
+       sudoers rule (visudo):
+         <your-user> ALL=(root) NOPASSWD: /sbin/route
+    3. cp agent/com.outpost.probe.plist ~/Library/LaunchAgents/
+       launchctl load ~/Library/LaunchAgents/com.outpost.probe.plist
+
+  Runs every 15 minutes via `uv run` (uses the project's locked environment).
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.outpost.probe</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/uv</string>
+        <string>run</string>
+        <string>--directory</string>
+        <string>/Users/evv/dev/projects/data-fields/outpost</string>
+        <string>python</string>
+        <string>agent/probe.py</string>
+        <string>--push</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/evv/dev/projects/data-fields/outpost</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>OUTPOST_LAN_GATEWAY</key>
+        <string>192.168.1.1</string>
+        <key>OUTPOST_LAN_DNS</key>
+        <string>192.168.1.1</string>
+        <key>SOPS_AGE_KEY_FILE</key>
+        <string>/Users/evv/.config/sops/age/outpost.key</string>
+    </dict>
+
+    <key>StartInterval</key>
+    <integer>900</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/outpost-probe.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/outpost-probe.err</string>
+</dict>
+</plist>
