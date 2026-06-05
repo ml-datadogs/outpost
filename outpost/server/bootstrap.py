@@ -1,9 +1,11 @@
 """SSH bootstrap: install sing-box and apply a node's rendered config.
 
 Auth order:
-  1. SSH private key from settings (preferred; used for Aeza where we upload the key)
-  2. root password returned by the provider order (Zomro), in which case we also
-     append our public key to authorized_keys for subsequent key-based access.
+  1. root password returned by the provider order (Aeza/Zomro): freshly ordered
+     nodes only accept password auth, so this takes precedence on first boot. We
+     then append our public key to authorized_keys for subsequent key-based runs.
+  2. SSH private key from settings (re-runs after the key is installed, and the
+     `adopt` flow where the key is already on the box).
 """
 
 from __future__ import annotations
@@ -51,10 +53,11 @@ def _connect(
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     kwargs = {"hostname": node.ip, "port": node.ssh_port, "username": node.ssh_user, "timeout": 20}
 
-    if settings.ssh_private_key_file and Path(settings.ssh_private_key_file).exists():
-        client.connect(key_filename=str(settings.ssh_private_key_file), **kwargs)
-    elif root_password:
+    if root_password:
+        # Freshly provisioned nodes only have password auth until we install the key.
         client.connect(password=root_password, look_for_keys=False, allow_agent=False, **kwargs)
+    elif settings.ssh_private_key_file and Path(settings.ssh_private_key_file).exists():
+        client.connect(key_filename=str(settings.ssh_private_key_file), **kwargs)
     else:
         client.connect(**kwargs)  # rely on agent / default keys
     return client

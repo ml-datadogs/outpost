@@ -30,8 +30,8 @@ providers:
         country: FI
         city: "Helsinki"
         canary: null
-        enabled: false
-        product_ref: { product_id: "" }
+        enabled: true
+        product_ref: { product_id: "355" }  # HELs-1 shared VPS (live Aeza catalog)
 
   - name: zomro
     policy_ok: true

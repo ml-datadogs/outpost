@@ -1,7 +1,20 @@
+import hashlib
+import json
+
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from outpost.models import Region
-from outpost.providers.aeza import AezaProvider
-from outpost.providers.base import ProvisionSpec, infer_country
+from outpost.providers.aeza import _SECURE_SALT, AezaProvider
+from outpost.providers.base import ProviderError, ProvisionSpec, infer_country
 from outpost.providers.zomro import ZomroProvider, _unwrap
+
+
+def _aeza_secure_params(pin: str, payload: dict) -> dict:
+    """Build a secureParameters blob the way Aeza encrypts it (for tests)."""
+    key = hashlib.scrypt(pin.encode(), salt=_SECURE_SALT, n=16, r=8, p=1, dklen=32)
+    iv = bytes(16)
+    enc = Cipher(algorithms.AES(key), modes.CTR(iv)).encryptor()
+    content = enc.update(json.dumps(payload).encode()) + enc.finalize()
+    return {"iv": iv.hex(), "content": content.hex()}
 
 
 def test_infer_country():
@@ -12,7 +25,9 @@ def test_infer_country():
 
 
 def test_aeza_discover_and_create(monkeypatch):
-    prov = AezaProvider(api_key="x")
+    pin = "1337"
+    prov = AezaProvider(api_key="x", pin=pin)
+    secure = _aeza_secure_params(pin, {"password": "r00t-pw"})
 
     routes = {
         ("GET", "/services/products?count=500"): {
@@ -21,12 +36,16 @@ def test_aeza_discover_and_create(monkeypatch):
         ("GET", "/os?count=500"): {"data": {"items": [{"id": 25, "name": "Ubuntu 24.04"}]}},
         ("POST", "/services/orders"): {"data": {"id": 999}},
         ("GET", "/services/orders/999"): {"data": {"createdServiceIds": [555]}},
-        ("GET", "/services/555?extra=1"): {"data": {"ip": "203.0.113.7", "status": "active"}},
-        ("GET", "/sshkeys?count=500"): {"data": {"items": []}},
-        ("POST", "/sshkeys"): {"data": {"items": [{"id": 42}]}},
+        ("GET", "/services/555?extra=1"): {
+            "data": {"ip": "203.0.113.7", "status": "active", "secureParameters": secure}
+        },
     }
 
+    captured = {}
+
     def fake_request(method, path, **kwargs):
+        if path == "/services/orders":
+            captured["order"] = kwargs.get("json")
         return routes[(method, path)]
 
     monkeypatch.setattr(prov, "_request", fake_request)
@@ -38,8 +57,45 @@ def test_aeza_discover_and_create(monkeypatch):
     spec = ProvisionSpec(name="t", region=regions[0], ssh_public_key="ssh-ed25519 AAA")
     result = prov.create(spec)
     assert result.provider_ref["service_id"] == "555"
+    assert result.root_password == "r00t-pw"
+    # Order must use the real VPS schema (no sshKey field).
+    assert captured["order"]["parameters"] == {"os": 25, "ddosNotifications": False}
     ip = prov.wait_for_ip(result.provider_ref)
     assert ip == "203.0.113.7"
+
+
+def test_aeza_create_without_pin_sets_password(monkeypatch):
+    """No PIN -> wait active, then set a known root password via changePassword."""
+    prov = AezaProvider(api_key="x", pin=None)
+    routes = {
+        ("GET", "/os?count=500"): {"data": {"items": [{"id": 25, "name": "Ubuntu 24.04"}]}},
+        ("POST", "/services/orders"): {"data": {"id": 999}},
+        ("GET", "/services/orders/999"): {"data": {"createdServiceIds": [555]}},
+        ("GET", "/services/555?extra=1"): {"data": {"ip": "203.0.113.7", "status": "active"}},
+    }
+    captured = {}
+
+    def fake_request(method, path, **kwargs):
+        if path == "/services/555/changePassword":
+            captured["password"] = kwargs["json"]["password"]
+            return {"data": {}}
+        return routes[(method, path)]
+
+    monkeypatch.setattr(prov, "_request", fake_request)
+    region = Region(code="NL", country="NL", product_ref={"product_id": "3"})
+    spec = ProvisionSpec(name="t", region=region)
+    result = prov.create(spec)
+    assert result.root_password
+    assert result.root_password == captured["password"]
+
+
+def test_aeza_decrypt_requires_pin():
+    prov = AezaProvider(api_key="x", pin=None)
+    try:
+        prov._decrypt_secure({"iv": "00", "content": "ab"})
+        raise AssertionError("expected ProviderError when AEZA_PIN missing")
+    except ProviderError as exc:
+        assert "AEZA_PIN" in str(exc)
 
 
 def test_aeza_error_raises(monkeypatch):

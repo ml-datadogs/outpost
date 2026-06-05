@@ -29,6 +29,7 @@ REPO_ROOT = PACKAGE_ROOT.parent
 class Settings:
     # Provider credentials
     aeza_api_key: Optional[str] = None
+    aeza_pin: Optional[str] = None  # account PIN; decrypts Aeza secureParameters (root pw)
     zomro_auth: Optional[str] = None
 
     # SSH
@@ -55,6 +56,7 @@ class Settings:
     def load(cls) -> Settings:
         return cls(
             aeza_api_key=os.getenv("AEZA_API_KEY") or None,
+            aeza_pin=os.getenv("AEZA_PIN") or None,
             zomro_auth=os.getenv("ZOMRO_AUTH") or None,
             ssh_public_key_file=_expand(os.getenv("OUTPOST_SSH_PUBLIC_KEY_FILE")),
             ssh_private_key_file=_expand(os.getenv("OUTPOST_SSH_PRIVATE_KEY_FILE")),

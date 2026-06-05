@@ -4,23 +4,33 @@ API: https://my.aeza.net/api  (auth header: ``X-API-Key: <token>``)
 List endpoints return ``{"data": {"items": [...], "total": N}}``; single-entity
 endpoints return ``{"data": {...}}``. Errors come back as ``{"error": {...}}``.
 
-Verified routes (from Aeza dev-docs):
+Verified routes (live API, 2026):
   GET    /services/products          -> tariffs (per location)
   GET    /os                         -> OS images
   POST   /services/orders            -> place order
   GET    /services/orders/{id}       -> order status (createdServiceIds)
-  GET    /services/{id}              -> service detail (ip, status)
+  GET    /services/{id}              -> service detail (ip, status, secureParameters)
   POST   /services/{id}/ctl          -> {action: suspend|resume|reboot}
   DELETE /services/{id}              -> destroy (no refund)
-  GET/POST /sshkeys                  -> list / add ssh key
+
+There is NO SSH-key API on Aeza: the VPS order schema only accepts
+``{os, recipe, isoUrl, ddosNotifications}`` (see GET /services/types ->
+vps.computedParameters). Instead Aeza auto-generates a root password and stores
+it in the service's ``secureParameters`` (AES-256-CTR, key derived from the
+account PIN). We decrypt it and hand it to the SSH bootstrapper, which logs in
+by password and installs our public key for subsequent runs.
 """
 
 from __future__ import annotations
 
+import hashlib
+import json
+import secrets
 import time
 from typing import Dict, List, Optional
 
 import requests
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 from ..models import Region
 from .base import BaseProvider, ProviderError, ProvisionResult, ProvisionSpec, infer_country
@@ -28,12 +38,22 @@ from .base import BaseProvider, ProviderError, ProvisionResult, ProvisionSpec, i
 DEFAULT_BASE_URL = "https://my.aeza.net/api"
 PREFERRED_OS = ["ubuntu 24", "ubuntu 22", "debian 12", "ubuntu", "debian"]
 
+# Aeza derives the secureParameters key as scrypt(pin, "rabbit-billing", N=16, r=8, p=1, 32).
+_SECURE_SALT = b"rabbit-billing"
+
 
 class AezaProvider(BaseProvider):
     name = "aeza"
 
-    def __init__(self, api_key: str, base_url: str = DEFAULT_BASE_URL, timeout: int = 30):
+    def __init__(
+        self,
+        api_key: str,
+        pin: Optional[str] = None,
+        base_url: str = DEFAULT_BASE_URL,
+        timeout: int = 30,
+    ):
         self.api_key = api_key
+        self.pin = pin
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
         self.session = requests.Session()
@@ -120,14 +140,9 @@ class AezaProvider(BaseProvider):
 
     # --- ssh keys ----------------------------------------------------------
     def ensure_ssh_key(self, name: str, public_key: str) -> str:
-        existing = self._items(self._request("GET", "/sshkeys?count=500"))
-        for item in existing:
-            if item.get("pubKey", "").strip() == public_key.strip() or item.get("name") == name:
-                return str(item.get("id", name))
-        body = self._request("POST", "/sshkeys", json={"name": name, "pubKey": public_key})
-        data = self._data(body)
-        item = data.get("items", [data])[0] if isinstance(data, dict) else data
-        return str(item.get("id", name))
+        # Aeza has no SSH-key API; the VPS comes up with a root password instead.
+        # The bootstrapper logs in by password and installs our key. No-op here.
+        return name
 
     # --- lifecycle ---------------------------------------------------------
     def create(self, spec: ProvisionSpec) -> ProvisionResult:
@@ -139,11 +154,9 @@ class AezaProvider(BaseProvider):
         if os_id is None:
             raise ProviderError("could not determine an OS id for the order")
 
-        parameters: Dict = {"os": int(os_id)}
-        if spec.ssh_public_key:
-            key_id = self.ensure_ssh_key(spec.ssh_key_name, spec.ssh_public_key)
-            # Aeza accepts ssh key id(s) in order parameters.
-            parameters["sshKey"] = key_id
+        # VPS order schema (GET /services/types -> vps.computedParameters):
+        # only os / recipe / isoUrl / ddosNotifications are accepted.
+        parameters: Dict = {"os": int(os_id), "ddosNotifications": False}
         parameters.update(spec.extra_parameters)
 
         order_body = self._request(
@@ -160,12 +173,127 @@ class AezaProvider(BaseProvider):
             },
         )
         order = self._data(order_body)
-        order_id = order.get("id")
-        service_id = self._await_service_id(order_id)
+        order_id, service_id = self._resolve_order(order, spec.name)
+
+        # Aeza gives no SSH key + no order-time password. Two ways to get root:
+        #   - PIN set:  decrypt the auto-generated password from secureParameters.
+        #   - no PIN:   wait for install, then set a known password via changePassword.
+        if self.pin:
+            root_password = self._fetch_root_password(service_id)
+        else:
+            root_password = self._set_known_password(service_id)
         return ProvisionResult(
-            provider_ref={"service_id": str(service_id), "order_id": str(order_id)},
+            provider_ref={"service_id": str(service_id), "order_id": str(order_id or "")},
+            root_password=root_password,
             raw=order,
         )
+
+    def _resolve_order(self, order: dict, name: str) -> tuple[Optional[str], str]:
+        """Find the created service id from the order response (shape varies).
+
+        Aeza's order POST response does not reliably expose an order id, so we fall
+        back to matching the freshly created service by the unique name we set.
+        """
+        if isinstance(order, dict):
+            ids = order.get("createdServiceIds")
+            if ids:
+                return None, str(ids[0])
+            order_id = order.get("id") or order.get("orderId")
+            nested = order.get("order")
+            if not order_id and isinstance(nested, dict):
+                order_id = nested.get("id")
+            if order_id:
+                return str(order_id), self._await_service_id(order_id)
+        return None, self._await_service_by_name(name)
+
+    def _await_service_by_name(self, name: str, timeout: int = 180, interval: int = 5) -> str:
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            for item in self._items(self._request("GET", "/services?count=500")):
+                if item.get("name") == name and item.get("id") is not None:
+                    return str(item["id"])
+            time.sleep(interval)
+        raise ProviderError(f"aeza order for '{name}' produced no service within {timeout}s")
+
+    def _wait_active(self, service_id, timeout: int = 420, interval: int = 8) -> None:
+        """Block until the service finishes installing (so a password set sticks)."""
+        installing = {"creating", "pending", "queued", "installing", "deploying", ""}
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            data = self._data(self._request("GET", f"/services/{service_id}?extra=1"))
+            status = (data.get("currentStatus") or data.get("status") or "").lower()
+            if status and status not in installing:
+                return
+            time.sleep(interval)
+        # Don't hard-fail: proceed and let the password set / SSH wait surface issues.
+
+    def _set_known_password(self, service_id) -> str:
+        """Set a strong root password we control (PIN-free path)."""
+        self._wait_active(service_id)
+        password = secrets.token_urlsafe(18)
+        last_err: Optional[Exception] = None
+        for _ in range(5):
+            try:
+                self._request("PUT", f"/services/{service_id}/changePassword", json={"password": password})
+                return password
+            except ProviderError as exc:  # service may still be settling
+                last_err = exc
+                time.sleep(8)
+        raise ProviderError(f"aeza changePassword failed for service {service_id}: {last_err}")
+
+    # --- root password (decrypt secureParameters) --------------------------
+    def _decrypt_secure(self, secure: dict) -> Optional[dict]:
+        """Decrypt Aeza secureParameters (AES-256-CTR; key = scrypt(PIN, salt))."""
+        if not self.pin:
+            raise ProviderError(
+                "AEZA_PIN is not set; cannot decrypt the VPS root password from "
+                "secureParameters. Set AEZA_PIN in .env (Aeza panel -> Settings -> Security)."
+            )
+        iv_hex = secure.get("iv")
+        content_hex = secure.get("content")
+        if not iv_hex or not content_hex:
+            return None
+        key = hashlib.scrypt(self.pin.encode(), salt=_SECURE_SALT, n=16, r=8, p=1, dklen=32)
+        cipher = Cipher(algorithms.AES(key), modes.CTR(bytes.fromhex(iv_hex)))
+        dec = cipher.decryptor()
+        plain = dec.update(bytes.fromhex(content_hex)) + dec.finalize()
+        try:
+            return json.loads(plain.decode())
+        except (ValueError, UnicodeDecodeError) as exc:
+            raise ProviderError("decrypted secureParameters is not valid JSON; is AEZA_PIN correct?") from exc
+
+    @staticmethod
+    def _find_password(payload: dict) -> Optional[str]:
+        for key in ("password", "rootPassword", "root_password", "pass"):
+            val = payload.get(key)
+            if val:
+                return str(val)
+        # Fall back to any key that looks like a password.
+        for k, v in payload.items():
+            if "pass" in k.lower() and v:
+                return str(v)
+        return None
+
+    def _fetch_root_password(self, service_id, timeout: int = 180, interval: int = 6) -> Optional[str]:
+        deadline = time.time() + timeout
+        last_secure: Optional[dict] = None
+        while time.time() < deadline:
+            data = self._data(self._request("GET", f"/services/{service_id}?extra=1"))
+            secure = data.get("secureParameters")
+            if isinstance(secure, dict) and secure.get("content"):
+                last_secure = secure
+                payload = self._decrypt_secure(secure)
+                if payload:
+                    pw = self._find_password(payload)
+                    if pw:
+                        return pw
+            time.sleep(interval)
+        if last_secure is not None:
+            raise ProviderError(
+                f"aeza service {service_id}: secureParameters present but no password "
+                f"field found (keys seen after decrypt). Check AEZA_PIN / payload shape."
+            )
+        raise ProviderError(f"aeza service {service_id} exposed no secureParameters within {timeout}s")
 
     def _await_service_id(self, order_id, timeout: int = 120, interval: int = 4) -> str:
         deadline = time.time() + timeout

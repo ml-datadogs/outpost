@@ -14,7 +14,7 @@ def get_provider(name: str, settings: Settings = default_settings) -> BaseProvid
 
         if not settings.aeza_api_key:
             raise ProviderError("AEZA_API_KEY is not set")
-        return AezaProvider(api_key=settings.aeza_api_key)
+        return AezaProvider(api_key=settings.aeza_api_key, pin=settings.aeza_pin)
     if name == "zomro":
         from .zomro import ZomroProvider
 
