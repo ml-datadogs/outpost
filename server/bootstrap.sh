@@ -5,9 +5,11 @@
 #   OUTPOST_SNI           TLS CN / fallback SNI (default www.bing.com)
 #   OUTPOST_TLS_DOMAIN    if set, obtain Let's Encrypt cert for this domain
 #   OUTPOST_PORTS         comma-separated ports to open, e.g. "443,2053"
+#   OUTPOST_XRAY_CONFIG   if set, install Xray-core and apply this Reality config
 set -euo pipefail
 
 CONFIG_SRC="${1:-/tmp/outpost-singbox.json}"
+XRAY_CONFIG_SRC="${OUTPOST_XRAY_CONFIG:-}"
 SNI="${OUTPOST_SNI:-www.bing.com}"
 TLS_DOMAIN="${OUTPOST_TLS_DOMAIN:-}"
 PORTS="${OUTPOST_PORTS:-443,2053}"
@@ -54,6 +56,18 @@ echo "[outpost] enabling service"
 systemctl enable sing-box >/dev/null 2>&1 || true
 systemctl restart sing-box
 
+if [ -n "$XRAY_CONFIG_SRC" ] && [ -f "$XRAY_CONFIG_SRC" ]; then
+  echo "[outpost] installing xray-core (Happ Reality)"
+  if ! command -v xray >/dev/null 2>&1; then
+    bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
+  fi
+  mkdir -p /usr/local/etc/xray
+  install -m 644 "$XRAY_CONFIG_SRC" /usr/local/etc/xray/config.json
+  xray run -test -config /usr/local/etc/xray/config.json
+  systemctl enable xray >/dev/null 2>&1 || true
+  systemctl restart xray
+fi
+
 if command -v ufw >/dev/null 2>&1; then
   echo "[outpost] opening firewall ports ${PORTS}"
   IFS=',' read -ra PARR <<< "$PORTS"
@@ -65,3 +79,6 @@ fi
 
 echo "[outpost] done"
 systemctl --no-pager status sing-box | head -n 5 || true
+if [ -n "$XRAY_CONFIG_SRC" ] && [ -f "$XRAY_CONFIG_SRC" ]; then
+  systemctl --no-pager status xray | head -n 5 || true
+fi

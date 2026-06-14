@@ -61,14 +61,18 @@ def test_happ_secure_node_no_pcs(node, inventory):
     node.tls_domain = "exit.example.com"
     node.tls_cert_sha256 = "ab" * 32
     hy2 = next(link for link in render_happ_links(inventory) if link.startswith("hysteria2://"))
+    trojan = next(link for link in render_happ_links(inventory) if link.startswith("trojan://"))
     assert "pcs=" not in hy2
     assert "insecure=" not in hy2
+    assert "@exit.example.com:" in hy2
+    assert "@exit.example.com:" in trojan
 
 
 def test_happ_reality_v2rayn_params(node, inventory):
-    reality = next(link for link in render_happ_links(inventory) if link.startswith("vless://"))
-    assert "flow=xtls-rprx-vision" in reality
-    assert "spx=" in reality
+    reality = next(link for link in render_happ_links(inventory) if link.startswith("vless://") and "-443" not in link.split("#")[-1])
+    assert "security=reality" in reality
+    assert "fp=firefox" in reality
+    assert "flow=" not in reality
     assert "allowInsecure" not in reality
 
 

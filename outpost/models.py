@@ -58,8 +58,8 @@ class NodeSecrets(BaseModel):
 
 class NodePorts(BaseModel):
     hysteria2: int = 443
-    trojan: int = 443  # TCP 443 (Hy2 uses UDP 443 on the same port)
-    vless_reality: int = 2053
+    trojan: int = 8443
+    vless_reality: int = 2053  # primary; xray also listens on 443 (see xray.py)
 
 
 class Node(BaseModel):

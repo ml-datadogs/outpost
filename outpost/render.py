@@ -12,7 +12,7 @@ Real cert (OUTPOST_TLS_DOMAIN): omit pcs/insecure entirely.
 from __future__ import annotations
 
 import base64
-from typing import List
+from typing import List, Optional
 from urllib.parse import quote
 
 from .models import HAPP_PROTOCOLS, SURGE_PROTOCOLS, Inventory, Node, Protocol
@@ -48,6 +48,11 @@ def _link_query(**params: str) -> str:
     return "&".join(
         f"{key}={quote(value, safe='')}" for key, value in params.items() if value != ""
     )
+
+
+def _link_host(node: Node) -> str:
+    """Use TLS domain as host when we have a real cert (Happ validates hostname + SNI)."""
+    return node.tls_domain or node.ip or ""
 
 
 # --------------------------------------------------------------------------- Surge
@@ -95,7 +100,7 @@ def _link_hysteria2(node: Node) -> str:
     query = _link_query(**params)
     auth = quote(s.hysteria2_password, safe="")
     suffix = f"/?{query}" if query else "/"
-    return f"hysteria2://{auth}@{node.ip}:{node.ports.hysteria2}{suffix}#{_frag(node.name + '-hy2')}"
+    return f"hysteria2://{auth}@{_link_host(node)}:{node.ports.hysteria2}{suffix}#{_frag(node.name + '-hy2')}"
 
 
 def _link_trojan(node: Node) -> str:
@@ -109,28 +114,29 @@ def _link_trojan(node: Node) -> str:
     _happ_cert_pin(params, node)
     query = _link_query(**params)
     return (
-        f"trojan://{quote(s.trojan_password, safe='')}@{node.ip}:{node.ports.trojan}"
+        f"trojan://{quote(s.trojan_password, safe='')}@{_link_host(node)}:{node.ports.trojan}"
         f"?{query}#{_frag(node.name + '-trojan')}"
     )
 
 
-def _link_reality(node: Node, reality_dest: str = DEFAULT_REALITY_DEST) -> str:
+def _link_reality(node: Node, reality_dest: str = DEFAULT_REALITY_DEST, port: Optional[int] = None) -> str:
     s = _secrets(node)
+    listen_port = port if port is not None else node.ports.vless_reality
     # v2rayN / Happ compatible parameter set (no allowInsecure; Reality pins via pbk/sid).
     query = _link_query(
         encryption="none",
-        flow="xtls-rprx-vision",
         security="reality",
         type="tcp",
         sni=reality_dest,
-        fp="chrome",
+        fp="firefox",
         pbk=s.reality_public_key,
         sid=s.reality_short_id,
         spx="/",
     )
+    label = node.name + "-reality" + (f"-{listen_port}" if listen_port != node.ports.vless_reality else "")
     return (
-        f"vless://{s.reality_uuid}@{node.ip}:{node.ports.vless_reality}"
-        f"?{query}#{_frag(node.name + '-reality')}"
+        f"vless://{s.reality_uuid}@{node.ip}:{listen_port}"
+        f"?{query}#{_frag(label)}"
     )
 
 
@@ -143,6 +149,8 @@ def render_happ_links(inv: Inventory, reality_dest: str = DEFAULT_REALITY_DEST) 
             links.append(_link_trojan(node))
         if Protocol.VLESS_REALITY in node.protocols and Protocol.VLESS_REALITY in HAPP_PROTOCOLS:
             links.append(_link_reality(node, reality_dest))
+            if node.ports.vless_reality != 443:
+                links.append(_link_reality(node, reality_dest, port=443))
     return links
 
 

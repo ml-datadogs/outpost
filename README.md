@@ -11,16 +11,18 @@ CI + on-Mac monitoring that **auto-rotates blocked nodes**.
 
 ## Protocols
 
-Each node runs three sing-box inbounds:
+Each node runs **sing-box** (Hy2 + Trojan) and **Xray-core** (Reality for Happ):
 
-| Protocol | Transport | Surge | Happ | Why |
-|---|---|---|---|---|
-| Hysteria 2 | UDP/QUIC | yes | yes | Primary; proven to survive the network |
-| Trojan | TCP/TLS | yes | yes | TCP fallback when RU DPI throttles UDP/QUIC |
-| VLESS + Reality | TCP | no | yes | Strongest DPI resistance (Happ only) |
+| Protocol | Transport | Server | Surge | Happ | Notes |
+|---|---|---|---|---|---|
+| Hysteria 2 | UDP/QUIC | sing-box :443 | yes | yes | Often blocked on RU UDP paths |
+| Trojan | TCP/TLS | sing-box :8443 | yes | yes | Often DPI’d on RU TCP paths |
+| VLESS + Reality | TCP | **Xray** :2053 + :443 | no | yes | **Primary for Happ** — see [docs/happ.md](docs/happ.md) |
 
 The Surge subscription contains Hysteria2 + Trojan; the Happ subscription contains all
-three. Both render from one source of truth (the inventory).
+three (two Reality links: ports 2053 and 443). Both render from one source of truth (the inventory).
+
+**Happ 4.11+:** no `allowInsecure` / `insecure` / `vcn`; use Let's Encrypt (`OUTPOST_TLS_DOMAIN`) or `pcs=` hex pin for Hy2/Trojan. Reality uses `pbk` + `sid` only.
 
 ## Three-gate provider eligibility
 

@@ -21,8 +21,10 @@ from ..config import settings as default_settings
 from ..models import Node
 from ..secrets_gen import generate_password
 from .singbox import render_singbox_config
+from .xray import render_xray_config
 
 REMOTE_CONFIG = "/tmp/outpost-singbox.json"
+REMOTE_XRAY_CONFIG = "/tmp/outpost-xray.json"
 REMOTE_SCRIPT = "/tmp/outpost-bootstrap.sh"
 
 
@@ -93,7 +95,14 @@ def bootstrap_node(
     if not node.ip:
         raise BootstrapError(f"node {node.id} has no IP")
 
+    tls_domain = node.tls_domain or settings.tls_domain
+    if tls_domain:
+        node.tls_domain = tls_domain
+        node.sni = tls_domain
+        node.insecure = False
+
     config_json = render_singbox_config(node, settings=settings, reality_dest=reality_dest)
+    xray_json = render_xray_config(node, settings=settings, reality_dest=reality_dest)
     script = (settings.server_dir / "bootstrap.sh").read_text()
     if node.secrets and not node.secrets.hysteria2_obfs_password:
         node.secrets.hysteria2_obfs_password = generate_password()
@@ -114,17 +123,18 @@ def bootstrap_node(
             )
 
         _put(client, config_json, REMOTE_CONFIG, mode=0o600)
+        _put(client, xray_json, REMOTE_XRAY_CONFIG, mode=0o600)
         _put(client, script, REMOTE_SCRIPT, mode=0o700)
 
         ports = f"{node.ports.hysteria2},{node.ports.trojan},{node.ports.vless_reality}"
-        tls_domain = node.tls_domain or settings.tls_domain
-        sni = tls_domain or node.sni
+        sni = node.tls_domain or node.sni
         env = (
             f"OUTPOST_SNI={_shell_quote(sni)} "
-            f"OUTPOST_PORTS={_shell_quote(ports)}"
+            f"OUTPOST_PORTS={_shell_quote(ports)} "
+            f"OUTPOST_XRAY_CONFIG={_shell_quote(REMOTE_XRAY_CONFIG)}"
         )
-        if tls_domain:
-            env += f" OUTPOST_TLS_DOMAIN={_shell_quote(tls_domain)}"
+        if node.tls_domain:
+            env += f" OUTPOST_TLS_DOMAIN={_shell_quote(node.tls_domain)}"
         _run(client, f"{env} bash {REMOTE_SCRIPT} {REMOTE_CONFIG}")
         pin = _run(
             client,
@@ -134,10 +144,6 @@ def bootstrap_node(
         ).strip()
         if len(pin) == 64 and all(c in "0123456789abcdef" for c in pin):
             node.tls_cert_sha256 = pin
-        if tls_domain:
-            node.tls_domain = tls_domain
-            node.insecure = False
-            node.sni = tls_domain
     finally:
         client.close()
 
