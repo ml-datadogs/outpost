@@ -1,7 +1,7 @@
 # Outpost
 
 Automated proxy fleet for restricted networks. Outpost provisions fresh VPS proxies
-on RU-friendly hosts (iteration 1: **Zomro** + **Aeza**, non-RU regions), bootstraps a
+on RU-friendly hosts (iteration 1: **Zomro** + **Aeza** + **Hostkey**, non-RU regions), bootstraps a
 [`sing-box`](https://sing-box.sagernet.org/) stack over SSH, and renders **one
 token-gated subscription URL** that auto-updates in both **Surge** and **Happ** — with
 CI + on-Mac monitoring that **auto-rotates blocked nodes**.
@@ -37,7 +37,7 @@ accounts). DigitalOcean is avoided (range-blocked). See `state/registry.yaml`.
 ## Architecture
 
 ```
- local CLI (Mac) --provision/rotate-->  Aeza/Zomro API  --> VPS (sing-box) via SSH
+ local CLI (Mac) --provision/rotate-->  Aeza/Zomro/Hostkey API  --> VPS (sing-box) via SSH
         |                                                          ^
         v                                                          |
  state/inventory.enc.yaml  --render-->  Surge sub + Happ sub       |
@@ -88,6 +88,10 @@ export SOPS_AGE_KEY_FILE=~/.config/sops/age/outpost.key
 |---|---|
 | `AEZA_API_KEY` | https://my.aeza.net/settings/apikeys |
 | `ZOMRO_AUTH` | Zomro API session token (api.zomro.com) |
+| `HOSTKEY_API_KEY` | Hostkey InvAPI account key (works after you have an active server) |
+| `HOSTKEY_EMAIL` / `HOSTKEY_PASSWORD` | Invapi panel login — **required to order the first server** |
+| `HOSTKEY_TRAFFIC_PLAN` | Optional traffic plan id (auto-tried; use `37` for RU/whmcs_itb if needed) |
+| `HOSTKEY_DEPLOY_OPTIONS` | Optional billing endpoint (e.g. `whmcs_itb` for RU accounts) |
 | `OUTPOST_SSH_PUBLIC_KEY_FILE` / `..._PRIVATE_KEY_FILE` | bootstrap SSH key |
 | `OUTPOST_SUB_TOKEN` | secret path segment for the subscription URL |
 | `OUTPOST_TLS_DOMAIN` | optional domain for real TLS SNI (else self-signed) |
@@ -100,10 +104,12 @@ export SOPS_AGE_KEY_FILE=~/.config/sops/age/outpost.key
 uv run outpost discover --provider aeza  --what regions
 uv run outpost discover --provider zomro --what products
 uv run outpost discover --provider zomro --what os        # note the OS uid for Zomro
+uv run outpost discover --provider hostkey --what regions # preset/location/os_id for registry
 
 # 2. Provision an exit (picks an eligible non-RU region automatically)
 uv run outpost provision --provider zomro
 uv run outpost provision --provider aeza --region Netherlands
+uv run outpost provision --provider hostkey --region 108-NL
 
 # 3. See the fleet
 uv run outpost list
@@ -121,10 +127,10 @@ uv run outpost rotate --reap  # replace blocked/down nodes, destroy retired
 uv run outpost destroy <id>
 ```
 
-> Note on provider responses: Aeza/Zomro field shapes are handled defensively but a few
+> Note on provider responses: Aeza/Zomro/Hostkey field shapes are handled defensively but a few
 > (product location fields, Zomro instance-list keys) may need minor tweaks against the
 > live API. `outpost discover` prints raw payloads to verify, and the provider clients
-> centralize these in `outpost/providers/{aeza,zomro}.py`.
+> centralize these in `outpost/providers/{aeza,zomro,hostkey}.py`.
 
 ## Subscription URL (Cloudflare Worker)
 

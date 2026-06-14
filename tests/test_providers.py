@@ -5,6 +5,7 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from outpost.models import Region
 from outpost.providers.aeza import _SECURE_SALT, AezaProvider
 from outpost.providers.base import ProviderError, ProvisionSpec, infer_country
+from outpost.providers.hostkey import HostkeyProvider
 from outpost.providers.zomro import ZomroProvider, _unwrap
 
 
@@ -130,3 +131,195 @@ def test_zomro_create_generates_password(monkeypatch):
     assert result.provider_ref["elid"] == "12345"
     assert result.root_password
     assert captured["v2.instances.order.param"]["pricelist"] == "6740"
+
+
+def test_hostkey_login_caches_token(monkeypatch):
+    prov = HostkeyProvider(api_key="key")
+    calls = {"n": 0}
+
+    def fake_post(module, action, auth=True, **fields):
+        if module == "auth" and action == "login":
+            calls["n"] += 1
+            return {"result": {"token": "tok123", "token_expire": 9999999999}}
+        return {"result": "OK"}
+
+    monkeypatch.setattr(prov, "_post", fake_post)
+    assert prov._login() == "tok123"
+    assert prov._login() == "tok123"
+    assert calls["n"] == 1
+
+
+def test_hostkey_discover_regions_vps_only(monkeypatch):
+    prov = HostkeyProvider(api_key="key")
+    monkeypatch.setattr(prov, "_login", lambda: "tok")
+
+    def fake_post(module, action, auth=True, **fields):
+        if module == "presets" and action == "list":
+            return {
+                "result": "OK",
+                "presets": [
+                    {"id": 108, "name": "Netherlands VPS Basic", "virtual": 1, "locations": "NL,DE"},
+                    {"id": 200, "name": "Dedicated X", "virtual": 0, "locations": "NL"},
+                ],
+            }
+        if module == "os" and action == "list":
+            return {"result": "OK", "os_list": [{"id": 180, "name": "Ubuntu 24.04"}]}
+        if module == "traffic_plans" and action == "list":
+            return {"result": "OK", "traffic_plans": [{"id": 25, "main_plan": 1}]}
+        raise AssertionError(f"unexpected {module}/{action}")
+
+    monkeypatch.setattr(prov, "_post", fake_post)
+    regions = prov.discover_regions()
+    assert len(regions) == 2  # 108-NL and 108-DE only (no dedicated)
+    assert regions[0].country == "NL"
+    assert regions[0].product_ref["preset"] == "108"
+    assert regions[0].product_ref["os_id"] == "180"
+
+
+def test_hostkey_create_and_wait_for_ip(monkeypatch):
+    prov = HostkeyProvider(api_key="key")
+    monkeypatch.setattr(prov, "_login", lambda: "tok")
+    captured = {}
+
+    def fake_post(module, action, auth=True, **fields):
+        key = f"{module}/{action}"
+        captured[key] = fields
+        if module == "traffic_plans" and action == "list":
+            return {"result": "OK", "traffic_plans": [{"id": 25, "main_plan": 1, "name": "3Tb VM"}]}
+        if key == "eq/order_instance":
+            return {"result": "OK", "id": 555, "callback": "cb1"}
+        if key == "eq/show":
+            return {"result": "OK", "IP": [{"IP": "93.184.216.34", "status": "active"}]}
+        if key == "eq_callback/check":
+            return {"result": "OK", "context": {"status": "done"}}
+        return {"result": "OK"}
+
+    monkeypatch.setattr(prov, "_post", fake_post)
+    region = Region(
+        code="108-NL",
+        country="NL",
+        product_ref={"preset": "108", "location_name": "NL", "os_id": "180"},
+    )
+    spec = ProvisionSpec(name="outpost-test", region=region)
+    result = prov.create(spec)
+    assert result.provider_ref["server_id"] == "555"
+    assert result.root_password
+    assert "@" not in result.root_password
+    assert "#" not in result.root_password
+    order = captured["eq/order_instance"]
+    assert order["preset"] == "108"
+    assert order["location_name"] == "NL"
+    assert order["os_id"] == "180"
+    assert order["deploy_period"] == "monthly"
+    assert order["traffic_plan"] == "25"
+    ip = prov.wait_for_ip(result.provider_ref)
+    assert ip == "93.184.216.34"
+
+
+def test_hostkey_destroy(monkeypatch):
+    prov = HostkeyProvider(api_key="key")
+    monkeypatch.setattr(prov, "_login", lambda: "tok")
+    captured = {}
+
+    def fake_post(module, action, auth=True, **fields):
+        captured[f"{module}/{action}"] = fields
+        return {"result": "OK"}
+
+    monkeypatch.setattr(prov, "_post", fake_post)
+    prov.destroy({"server_id": "777"})
+    req = captured["whmcs/request_cancellation"]
+    assert req["id"] == "777"
+    assert req["cancellation_type"] == 1
+
+
+def test_hostkey_login_falls_back_to_whmcs(monkeypatch):
+    prov = HostkeyProvider(api_key="bad", whmcs_user="u@example.com", whmcs_password="pw")
+    calls = []
+
+    def fake_post(module, action, auth=True, **fields):
+        calls.append((module, action))
+        if module == "auth" and action == "login":
+            return {"result": -1, "error": "No appropriate servers found"}
+        if module == "auth" and action == "whmcslogin":
+            return {"result": {"token": "whmcs-tok", "token_expire": 9999999999}}
+        return {"result": "OK"}
+
+    monkeypatch.setattr(prov, "_post", fake_post)
+    assert prov._login() == "whmcs-tok"
+    assert calls[0] == ("auth", "login")
+    assert calls[1] == ("auth", "whmcslogin")
+
+
+def test_hostkey_post_raises_on_result_minus_one(monkeypatch):
+    prov = HostkeyProvider(api_key="key")
+
+    class Resp:
+        status_code = 200
+
+        def json(self):
+            return {"result": -1, "error": "hourly billing is available only for prebill customers."}
+
+    monkeypatch.setattr(prov.session, "post", lambda *a, **k: Resp())
+    try:
+        prov._post("eq", "order_instance", auth=False)
+        raise AssertionError("expected ProviderError")
+    except ProviderError as exc:
+        assert "prebill" in str(exc)
+
+
+def test_hostkey_generate_root_password():
+    pw = HostkeyProvider._generate_root_password()
+    assert 8 <= len(pw) <= 30
+    assert pw[0].isalnum()
+    assert any(c.isupper() for c in pw)
+    assert any(c.islower() for c in pw)
+    assert any(c.isdigit() for c in pw)
+    assert "@" not in pw and "#" not in pw
+
+
+def test_hostkey_omits_rub_currency_on_order(monkeypatch):
+    prov = HostkeyProvider(api_key="key")
+    prov._currency_code = "RUB"
+    prov._whmcs_location = "whmcs_itb"
+    monkeypatch.setattr(prov, "_login", lambda: "tok")
+    captured = {}
+
+    def fake_post(module, action, auth=True, **fields):
+        key = f"{module}/{action}"
+        captured[key] = fields
+        if module == "traffic_plans" and action == "list":
+            return {"result": "OK", "traffic_plans": [{"id": 25, "main_plan": 1}]}
+        if key == "eq/order_instance":
+            return {"result": "OK", "id": 555, "callback": "cb1"}
+        return {"result": "OK"}
+
+    monkeypatch.setattr(prov, "_post", fake_post)
+    region = Region(
+        code="108-NL",
+        country="NL",
+        product_ref={"preset": "108", "location_name": "NL", "os_id": "180"},
+    )
+    spec = ProvisionSpec(name="outpost-test", region=region)
+    prov.create(spec)
+    order = captured["eq/order_instance"]
+    assert "currency_code" not in order
+    assert order["deploy_options"] == "whmcs_itb"
+    assert order["traffic_plan"] == "25"
+
+
+def test_hostkey_error_raises(monkeypatch):
+    prov = HostkeyProvider(api_key="key")
+
+    class Resp:
+        status_code = 200
+
+        def json(self):
+            return {"code": -1, "message": "nope"}
+
+    monkeypatch.setattr(prov.session, "post", lambda *a, **k: Resp())
+    try:
+        prov._post("eq", "show", auth=False)
+        raise AssertionError("expected ProviderError")
+    except ProviderError as exc:
+        assert "nope" in str(exc)
+

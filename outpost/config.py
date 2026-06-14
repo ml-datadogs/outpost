@@ -31,6 +31,12 @@ class Settings:
     aeza_api_key: Optional[str] = None
     aeza_pin: Optional[str] = None  # account PIN; decrypts Aeza secureParameters (root pw)
     zomro_auth: Optional[str] = None
+    hostkey_api_key: Optional[str] = None
+    hostkey_base_url: Optional[str] = None
+    hostkey_email: Optional[str] = None
+    hostkey_password: Optional[str] = None
+    hostkey_traffic_plan: Optional[str] = None
+    hostkey_deploy_options: Optional[str] = None
 
     # SSH
     ssh_public_key_file: Optional[Path] = None
@@ -58,6 +64,12 @@ class Settings:
             aeza_api_key=os.getenv("AEZA_API_KEY") or None,
             aeza_pin=os.getenv("AEZA_PIN") or None,
             zomro_auth=os.getenv("ZOMRO_AUTH") or None,
+            hostkey_api_key=os.getenv("HOSTKEY_API_KEY") or None,
+            hostkey_base_url=os.getenv("HOSTKEY_BASE_URL") or None,
+            hostkey_email=os.getenv("HOSTKEY_EMAIL") or None,
+            hostkey_password=os.getenv("HOSTKEY_PASSWORD") or None,
+            hostkey_traffic_plan=os.getenv("HOSTKEY_TRAFFIC_PLAN") or None,
+            hostkey_deploy_options=os.getenv("HOSTKEY_DEPLOY_OPTIONS") or None,
             ssh_public_key_file=_expand(os.getenv("OUTPOST_SSH_PUBLIC_KEY_FILE")),
             ssh_private_key_file=_expand(os.getenv("OUTPOST_SSH_PRIVATE_KEY_FILE")),
             sub_token=os.getenv("OUTPOST_SUB_TOKEN") or None,

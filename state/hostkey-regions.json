@@ -1,0 +1,1413 @@
+[
+  {
+    "code": "108-NL",
+    "country": "NL",
+    "city": "vm.pico",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "108",
+      "location_name": "NL",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "108-UK",
+    "country": "GB",
+    "city": "vm.pico",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "108",
+      "location_name": "UK",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "108-PL",
+    "country": "PL",
+    "city": "vm.pico",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "108",
+      "location_name": "PL",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "279-NL",
+    "country": "NL",
+    "city": "vm.v2-pico",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "279",
+      "location_name": "NL"
+    }
+  },
+  {
+    "code": "279-US",
+    "country": "US",
+    "city": "vm.v2-pico",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "279",
+      "location_name": "US"
+    }
+  },
+  {
+    "code": "279-DE",
+    "country": "DE",
+    "city": "vm.v2-pico",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "279",
+      "location_name": "DE"
+    }
+  },
+  {
+    "code": "279-FR",
+    "country": "FR",
+    "city": "vm.v2-pico",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "279",
+      "location_name": "FR"
+    }
+  },
+  {
+    "code": "279-TR",
+    "country": "TR",
+    "city": "vm.v2-pico",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "279",
+      "location_name": "TR"
+    }
+  },
+  {
+    "code": "279-UK",
+    "country": "GB",
+    "city": "vm.v2-pico",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "279",
+      "location_name": "UK"
+    }
+  },
+  {
+    "code": "279-PL",
+    "country": "PL",
+    "city": "vm.v2-pico",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "279",
+      "location_name": "PL"
+    }
+  },
+  {
+    "code": "276-NL",
+    "country": "NL",
+    "city": "vm.v3-pico",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "276",
+      "location_name": "NL",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "276-US",
+    "country": "US",
+    "city": "vm.v3-pico",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "276",
+      "location_name": "US",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "276-DE",
+    "country": "DE",
+    "city": "vm.v3-pico",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "276",
+      "location_name": "DE",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "276-FR",
+    "country": "FR",
+    "city": "vm.v3-pico",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "276",
+      "location_name": "FR",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "1-NL",
+    "country": "NL",
+    "city": "vm.nano",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "1",
+      "location_name": "NL",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "1-UK",
+    "country": "GB",
+    "city": "vm.nano",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "1",
+      "location_name": "UK",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "1-PL",
+    "country": "PL",
+    "city": "vm.nano",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "1",
+      "location_name": "PL",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "84-NL",
+    "country": "NL",
+    "city": "vm.v2-nano",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "84",
+      "location_name": "NL"
+    }
+  },
+  {
+    "code": "84-US",
+    "country": "US",
+    "city": "vm.v2-nano",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "84",
+      "location_name": "US"
+    }
+  },
+  {
+    "code": "84-DE",
+    "country": "DE",
+    "city": "vm.v2-nano",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "84",
+      "location_name": "DE"
+    }
+  },
+  {
+    "code": "84-FR",
+    "country": "FR",
+    "city": "vm.v2-nano",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "84",
+      "location_name": "FR"
+    }
+  },
+  {
+    "code": "84-TR",
+    "country": "TR",
+    "city": "vm.v2-nano",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "84",
+      "location_name": "TR"
+    }
+  },
+  {
+    "code": "84-UK",
+    "country": "GB",
+    "city": "vm.v2-nano",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "84",
+      "location_name": "UK"
+    }
+  },
+  {
+    "code": "84-PL",
+    "country": "PL",
+    "city": "vm.v2-nano",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "84",
+      "location_name": "PL"
+    }
+  },
+  {
+    "code": "273-NL",
+    "country": "NL",
+    "city": "vm.v3-nano",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "273",
+      "location_name": "NL",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "273-US",
+    "country": "US",
+    "city": "vm.v3-nano",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "273",
+      "location_name": "US",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "273-DE",
+    "country": "DE",
+    "city": "vm.v3-nano",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "273",
+      "location_name": "DE",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "273-FR",
+    "country": "FR",
+    "city": "vm.v3-nano",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "273",
+      "location_name": "FR",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "90-NL",
+    "country": "NL",
+    "city": "vm.storage-1000",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "90",
+      "location_name": "NL",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "90-US",
+    "country": "US",
+    "city": "vm.storage-1000",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "90",
+      "location_name": "US",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "90-DE",
+    "country": "DE",
+    "city": "vm.storage-1000",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "90",
+      "location_name": "DE",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "90-FR",
+    "country": "FR",
+    "city": "vm.storage-1000",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "90",
+      "location_name": "FR",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "90-PL",
+    "country": "PL",
+    "city": "vm.storage-1000",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "90",
+      "location_name": "PL",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "326-NL",
+    "country": "NL",
+    "city": "vds.ryzen-8",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "326",
+      "location_name": "NL"
+    }
+  },
+  {
+    "code": "326-US",
+    "country": "US",
+    "city": "vds.ryzen-8",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "326",
+      "location_name": "US"
+    }
+  },
+  {
+    "code": "326-FI",
+    "country": "FI",
+    "city": "vds.ryzen-8",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "326",
+      "location_name": "FI"
+    }
+  },
+  {
+    "code": "326-DE",
+    "country": "DE",
+    "city": "vds.ryzen-8",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "326",
+      "location_name": "DE"
+    }
+  },
+  {
+    "code": "326-FR",
+    "country": "FR",
+    "city": "vds.ryzen-8",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "326",
+      "location_name": "FR"
+    }
+  },
+  {
+    "code": "326-TR",
+    "country": "TR",
+    "city": "vds.ryzen-8",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "326",
+      "location_name": "TR"
+    }
+  },
+  {
+    "code": "326-UK",
+    "country": "GB",
+    "city": "vds.ryzen-8",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "326",
+      "location_name": "UK"
+    }
+  },
+  {
+    "code": "326-PL",
+    "country": "PL",
+    "city": "vds.ryzen-8",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "326",
+      "location_name": "PL"
+    }
+  },
+  {
+    "code": "2-NL",
+    "country": "NL",
+    "city": "vm.mini",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "2",
+      "location_name": "NL",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "2-UK",
+    "country": "GB",
+    "city": "vm.mini",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "2",
+      "location_name": "UK",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "2-PL",
+    "country": "PL",
+    "city": "vm.mini",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "2",
+      "location_name": "PL",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "85-NL",
+    "country": "NL",
+    "city": "vm.v2-mini",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "85",
+      "location_name": "NL"
+    }
+  },
+  {
+    "code": "85-US",
+    "country": "US",
+    "city": "vm.v2-mini",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "85",
+      "location_name": "US"
+    }
+  },
+  {
+    "code": "85-DE",
+    "country": "DE",
+    "city": "vm.v2-mini",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "85",
+      "location_name": "DE"
+    }
+  },
+  {
+    "code": "85-FR",
+    "country": "FR",
+    "city": "vm.v2-mini",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "85",
+      "location_name": "FR"
+    }
+  },
+  {
+    "code": "85-TR",
+    "country": "TR",
+    "city": "vm.v2-mini",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "85",
+      "location_name": "TR"
+    }
+  },
+  {
+    "code": "85-UK",
+    "country": "GB",
+    "city": "vm.v2-mini",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "85",
+      "location_name": "UK"
+    }
+  },
+  {
+    "code": "85-PL",
+    "country": "PL",
+    "city": "vm.v2-mini",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "85",
+      "location_name": "PL"
+    }
+  },
+  {
+    "code": "125-NL",
+    "country": "NL",
+    "city": "vm.v3-mini",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "125",
+      "location_name": "NL",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "125-US",
+    "country": "US",
+    "city": "vm.v3-mini",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "125",
+      "location_name": "US",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "125-DE",
+    "country": "DE",
+    "city": "vm.v3-mini",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "125",
+      "location_name": "DE",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "125-FR",
+    "country": "FR",
+    "city": "vm.v3-mini",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "125",
+      "location_name": "FR",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "91-NL",
+    "country": "NL",
+    "city": "vm.storage-2000",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "91",
+      "location_name": "NL",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "91-US",
+    "country": "US",
+    "city": "vm.storage-2000",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "91",
+      "location_name": "US",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "91-DE",
+    "country": "DE",
+    "city": "vm.storage-2000",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "91",
+      "location_name": "DE",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "91-FR",
+    "country": "FR",
+    "city": "vm.storage-2000",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "91",
+      "location_name": "FR",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "91-PL",
+    "country": "PL",
+    "city": "vm.storage-2000",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "91",
+      "location_name": "PL",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "204-NL",
+    "country": "NL",
+    "city": "vds.v1-max",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "204",
+      "location_name": "NL"
+    }
+  },
+  {
+    "code": "204-DE",
+    "country": "DE",
+    "city": "vds.v1-max",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "204",
+      "location_name": "DE"
+    }
+  },
+  {
+    "code": "133-NL",
+    "country": "NL",
+    "city": "vds.v1-storage-8",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "133",
+      "location_name": "NL"
+    }
+  },
+  {
+    "code": "330-NL",
+    "country": "NL",
+    "city": "vds.ryzen-16",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "330",
+      "location_name": "NL"
+    }
+  },
+  {
+    "code": "330-US",
+    "country": "US",
+    "city": "vds.ryzen-16",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "330",
+      "location_name": "US"
+    }
+  },
+  {
+    "code": "330-FI",
+    "country": "FI",
+    "city": "vds.ryzen-16",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "330",
+      "location_name": "FI"
+    }
+  },
+  {
+    "code": "330-DE",
+    "country": "DE",
+    "city": "vds.ryzen-16",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "330",
+      "location_name": "DE"
+    }
+  },
+  {
+    "code": "330-FR",
+    "country": "FR",
+    "city": "vds.ryzen-16",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "330",
+      "location_name": "FR"
+    }
+  },
+  {
+    "code": "330-TR",
+    "country": "TR",
+    "city": "vds.ryzen-16",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "330",
+      "location_name": "TR"
+    }
+  },
+  {
+    "code": "330-UK",
+    "country": "GB",
+    "city": "vds.ryzen-16",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "330",
+      "location_name": "UK"
+    }
+  },
+  {
+    "code": "330-PL",
+    "country": "PL",
+    "city": "vds.ryzen-16",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "330",
+      "location_name": "PL"
+    }
+  },
+  {
+    "code": "136-NL",
+    "country": "NL",
+    "city": "vds.v1-storage-36",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "136",
+      "location_name": "NL"
+    }
+  },
+  {
+    "code": "4-NL",
+    "country": "NL",
+    "city": "vm.medium",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "4",
+      "location_name": "NL",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "4-UK",
+    "country": "GB",
+    "city": "vm.medium",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "4",
+      "location_name": "UK",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "4-PL",
+    "country": "PL",
+    "city": "vm.medium",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "4",
+      "location_name": "PL",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "87-NL",
+    "country": "NL",
+    "city": "vm.v2-medium",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "87",
+      "location_name": "NL"
+    }
+  },
+  {
+    "code": "87-US",
+    "country": "US",
+    "city": "vm.v2-medium",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "87",
+      "location_name": "US"
+    }
+  },
+  {
+    "code": "87-DE",
+    "country": "DE",
+    "city": "vm.v2-medium",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "87",
+      "location_name": "DE"
+    }
+  },
+  {
+    "code": "87-FR",
+    "country": "FR",
+    "city": "vm.v2-medium",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "87",
+      "location_name": "FR"
+    }
+  },
+  {
+    "code": "87-TR",
+    "country": "TR",
+    "city": "vm.v2-medium",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "87",
+      "location_name": "TR"
+    }
+  },
+  {
+    "code": "87-UK",
+    "country": "GB",
+    "city": "vm.v2-medium",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "87",
+      "location_name": "UK"
+    }
+  },
+  {
+    "code": "87-PL",
+    "country": "PL",
+    "city": "vm.v2-medium",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "87",
+      "location_name": "PL"
+    }
+  },
+  {
+    "code": "126-NL",
+    "country": "NL",
+    "city": "vm.v3-medium",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "126",
+      "location_name": "NL",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "126-US",
+    "country": "US",
+    "city": "vm.v3-medium",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "126",
+      "location_name": "US",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "126-DE",
+    "country": "DE",
+    "city": "vm.v3-medium",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "126",
+      "location_name": "DE",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "126-FR",
+    "country": "FR",
+    "city": "vm.v3-medium",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "126",
+      "location_name": "FR",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "88-NL",
+    "country": "NL",
+    "city": "vm.v2-heavy",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "88",
+      "location_name": "NL"
+    }
+  },
+  {
+    "code": "88-US",
+    "country": "US",
+    "city": "vm.v2-heavy",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "88",
+      "location_name": "US"
+    }
+  },
+  {
+    "code": "88-DE",
+    "country": "DE",
+    "city": "vm.v2-heavy",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "88",
+      "location_name": "DE"
+    }
+  },
+  {
+    "code": "88-FR",
+    "country": "FR",
+    "city": "vm.v2-heavy",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "88",
+      "location_name": "FR"
+    }
+  },
+  {
+    "code": "88-TR",
+    "country": "TR",
+    "city": "vm.v2-heavy",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "88",
+      "location_name": "TR"
+    }
+  },
+  {
+    "code": "88-UK",
+    "country": "GB",
+    "city": "vm.v2-heavy",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "88",
+      "location_name": "UK"
+    }
+  },
+  {
+    "code": "88-PL",
+    "country": "PL",
+    "city": "vm.v2-heavy",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "88",
+      "location_name": "PL"
+    }
+  },
+  {
+    "code": "134-NL",
+    "country": "NL",
+    "city": "vm.storage-4000",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "134",
+      "location_name": "NL",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "134-US",
+    "country": "US",
+    "city": "vm.storage-4000",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "134",
+      "location_name": "US",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "134-DE",
+    "country": "DE",
+    "city": "vm.storage-4000",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "134",
+      "location_name": "DE",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "134-FR",
+    "country": "FR",
+    "city": "vm.storage-4000",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "134",
+      "location_name": "FR",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "134-PL",
+    "country": "PL",
+    "city": "vm.storage-4000",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "134",
+      "location_name": "PL",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "127-NL",
+    "country": "NL",
+    "city": "vm.v3-heavy",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "127",
+      "location_name": "NL",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "127-US",
+    "country": "US",
+    "city": "vm.v3-heavy",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "127",
+      "location_name": "US",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "127-DE",
+    "country": "DE",
+    "city": "vm.v3-heavy",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "127",
+      "location_name": "DE",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "127-FR",
+    "country": "FR",
+    "city": "vm.v3-heavy",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "127",
+      "location_name": "FR",
+      "os_id": "237"
+    }
+  },
+  {
+    "code": "9-NL",
+    "country": "NL",
+    "city": "vgpu.v1-1080Ti",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "9",
+      "location_name": "NL"
+    }
+  },
+  {
+    "code": "334-NL",
+    "country": "NL",
+    "city": "vds.ryzen-32",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "334",
+      "location_name": "NL"
+    }
+  },
+  {
+    "code": "334-US",
+    "country": "US",
+    "city": "vds.ryzen-32",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "334",
+      "location_name": "US"
+    }
+  },
+  {
+    "code": "334-FI",
+    "country": "FI",
+    "city": "vds.ryzen-32",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "334",
+      "location_name": "FI"
+    }
+  },
+  {
+    "code": "334-DE",
+    "country": "DE",
+    "city": "vds.ryzen-32",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "334",
+      "location_name": "DE"
+    }
+  },
+  {
+    "code": "334-FR",
+    "country": "FR",
+    "city": "vds.ryzen-32",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "334",
+      "location_name": "FR"
+    }
+  },
+  {
+    "code": "334-TR",
+    "country": "TR",
+    "city": "vds.ryzen-32",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "334",
+      "location_name": "TR"
+    }
+  },
+  {
+    "code": "334-UK",
+    "country": "GB",
+    "city": "vds.ryzen-32",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "334",
+      "location_name": "UK"
+    }
+  },
+  {
+    "code": "334-PL",
+    "country": "PL",
+    "city": "vds.ryzen-32",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "334",
+      "location_name": "PL"
+    }
+  },
+  {
+    "code": "83-NL",
+    "country": "NL",
+    "city": "vgpu.v2-a4000",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "83",
+      "location_name": "NL"
+    }
+  },
+  {
+    "code": "83-FR",
+    "country": "FR",
+    "city": "vgpu.v2-a4000",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "83",
+      "location_name": "FR"
+    }
+  },
+  {
+    "code": "54-NL",
+    "country": "NL",
+    "city": "vgpu.v2-a5000",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "54",
+      "location_name": "NL"
+    }
+  },
+  {
+    "code": "54-FR",
+    "country": "FR",
+    "city": "vgpu.v2-a5000",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "54",
+      "location_name": "FR"
+    }
+  },
+  {
+    "code": "121-NL",
+    "country": "NL",
+    "city": "vgpu.v3-4090",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "121",
+      "location_name": "NL"
+    }
+  },
+  {
+    "code": "121-DE",
+    "country": "DE",
+    "city": "vgpu.v3-4090",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "121",
+      "location_name": "DE"
+    }
+  },
+  {
+    "code": "228-NL",
+    "country": "NL",
+    "city": "vgpu.v3-4090d+",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "228",
+      "location_name": "NL"
+    }
+  },
+  {
+    "code": "144-NL",
+    "country": "NL",
+    "city": "vgpu.v3-A100",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "144",
+      "location_name": "NL"
+    }
+  },
+  {
+    "code": "225-DE",
+    "country": "DE",
+    "city": "vgpu.v3-4090+",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "225",
+      "location_name": "DE"
+    }
+  },
+  {
+    "code": "225-US",
+    "country": "US",
+    "city": "vgpu.v3-4090+",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "225",
+      "location_name": "US"
+    }
+  },
+  {
+    "code": "225-FR",
+    "country": "FR",
+    "city": "vgpu.v3-4090+",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "225",
+      "location_name": "FR"
+    }
+  },
+  {
+    "code": "123-FR",
+    "country": "FR",
+    "city": "vgpu.v2-3090",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "123",
+      "location_name": "FR"
+    }
+  },
+  {
+    "code": "391-FR",
+    "country": "FR",
+    "city": "vgpu.v4-5090",
+    "canary": null,
+    "enabled": true,
+    "product_ref": {
+      "preset": "391",
+      "location_name": "FR"
+    }
+  }
+]

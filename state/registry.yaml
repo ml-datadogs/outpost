@@ -45,6 +45,34 @@ providers:
         enabled: false
         product_ref: { pricelist: "", datacenter: "", os: "" }
 
+  - name: hostkey
+    policy_ok: true
+    sanctioned: false
+    notes: "RU-friendly InvAPI billing. Hourly VPS (vm.pico). NL primary, DE for diversity."
+    regions:
+      - code: "108-NL"
+        country: NL
+        city: "vm.pico"
+        canary: null
+        enabled: true
+        product_ref:
+          preset: "108"
+          preset_name: "vm.pico"
+          location_name: "NL"
+          os_id: "237"
+          deploy_period: monthly
+      - code: "276-DE"
+        country: DE
+        city: "vm.v3-pico"
+        canary: null
+        enabled: true
+        product_ref:
+          preset: "276"
+          preset_name: "vm.v3-pico"
+          location_name: "DE"
+          os_id: "237"
+          deploy_period: monthly
+
   # Documented EXCLUSION (kept for visibility; not eligible).
   - name: hetzner
     policy_ok: false   # bans/suspends RU/CIS accounts and freezes payment

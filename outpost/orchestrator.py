@@ -122,27 +122,34 @@ def adopt_node(
     country: str = "??",
     provider_name: str = "byo",
     name: Optional[str] = None,
+    root_password: Optional[str] = None,
+    provider_ref: Optional[dict] = None,
     save=None,
 ) -> Node:
-    """Adopt a hand-made server (BYO): just IP + SSH access, install sing-box."""
+    """Adopt a hand-made server (BYO): IP + SSH access (key or password), install sing-box.
+
+    Pass ``root_password`` when the box only has password auth (e.g. an Aeza VPS
+    whose key we authorized in the panel); the bootstrapper then installs our key.
+    """
     short = uuid.uuid4().hex[:6]
     node = Node(
         id=short,
-        name=name or f"byo-{country.lower()}-{short}",
+        name=name or f"{provider_name}-{country.lower()}-{short}",
         provider=provider_name,
         region="manual",
         country=country,
         ip=ip,
+        provider_ref=provider_ref or {},
         tls_domain=settings.tls_domain or None,
         insecure=settings.tls_domain is None,
         secrets=generate_node_secrets(),
-        tags=["byo"],
+        tags=["byo" if provider_name == "byo" else "adopted"],
     )
     node.status = NodeStatus.PROVISIONING
     inventory.upsert(node)
     if save:
         save(inventory)
-    bootstrap_node(node, settings=settings)
+    bootstrap_node(node, settings=settings, root_password=root_password)
     node.status = NodeStatus.ACTIVE
     inventory.upsert(node)
     if save:

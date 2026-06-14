@@ -87,6 +87,19 @@ class AezaProvider(BaseProvider):
             return data
         return []
 
+    def _service_detail(self, service_id) -> dict:
+        """Fetch one service. GET /services/{id} returns a list-shaped payload
+        ({items:[...], total}), so unwrap to the single matching entity."""
+        body = self._request("GET", f"/services/{service_id}?extra=1")
+        items = self._items(body)
+        if items:
+            for it in items:
+                if str(it.get("id")) == str(service_id):
+                    return it
+            return items[0]
+        data = self._data(body)
+        return data if isinstance(data, dict) else {}
+
     # --- discovery ---------------------------------------------------------
     def list_products(self) -> List[dict]:
         return self._items(self._request("GET", "/services/products?count=500"))
@@ -217,10 +230,10 @@ class AezaProvider(BaseProvider):
 
     def _wait_active(self, service_id, timeout: int = 420, interval: int = 8) -> None:
         """Block until the service finishes installing (so a password set sticks)."""
-        installing = {"creating", "pending", "queued", "installing", "deploying", ""}
+        installing = {"creating", "pending", "queued", "installing", "deploying", "activation_wait", ""}
         deadline = time.time() + timeout
         while time.time() < deadline:
-            data = self._data(self._request("GET", f"/services/{service_id}?extra=1"))
+            data = self._service_detail(service_id)
             status = (data.get("currentStatus") or data.get("status") or "").lower()
             if status and status not in installing:
                 return
@@ -278,7 +291,7 @@ class AezaProvider(BaseProvider):
         deadline = time.time() + timeout
         last_secure: Optional[dict] = None
         while time.time() < deadline:
-            data = self._data(self._request("GET", f"/services/{service_id}?extra=1"))
+            data = self._service_detail(service_id)
             secure = data.get("secureParameters")
             if isinstance(secure, dict) and secure.get("content"):
                 last_secure = secure
@@ -310,11 +323,8 @@ class AezaProvider(BaseProvider):
         service_id = provider_ref["service_id"]
         deadline = time.time() + timeout
         while time.time() < deadline:
-            data = self._data(self._request("GET", f"/services/{service_id}?extra=1"))
+            data = self._service_detail(service_id)
             ip = data.get("ip")
-            status = (data.get("status") or data.get("currentStatus") or "").lower()
-            if ip and status not in ("creating", "pending", "queued", ""):
-                return str(ip)
             if ip:
                 return str(ip)
             time.sleep(interval)

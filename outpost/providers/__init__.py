@@ -21,6 +21,17 @@ def get_provider(name: str, settings: Settings = default_settings) -> BaseProvid
         if not settings.zomro_auth:
             raise ProviderError("ZOMRO_AUTH is not set")
         return ZomroProvider(auth=settings.zomro_auth)
+    if name == "hostkey":
+        from .hostkey import DEFAULT_BASE_URL, HostkeyProvider
+
+        return HostkeyProvider(
+            api_key=settings.hostkey_api_key or "",
+            base_url=settings.hostkey_base_url or DEFAULT_BASE_URL,
+            whmcs_user=settings.hostkey_email,
+            whmcs_password=settings.hostkey_password,
+            traffic_plan=settings.hostkey_traffic_plan,
+            deploy_options=settings.hostkey_deploy_options,
+        )
     raise ProviderError(f"unknown provider: {name}")
 
 

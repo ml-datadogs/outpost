@@ -37,8 +37,10 @@ def _load_reg():
 # --------------------------------------------------------------------------- discover
 @app.command()
 def discover(
-    provider: str = typer.Option(..., "--provider", "-p", help="aeza | zomro"),
-    what: str = typer.Option("regions", "--what", help="regions | products | os"),
+    provider: str = typer.Option(..., "--provider", "-p", help="aeza | zomro | hostkey"),
+    what: str = typer.Option("regions", "--what", help="regions | products | os | traffic_plans"),
+    preset: str = typer.Option("108", "--preset", help="Hostkey preset id (for traffic_plans)"),
+    location: str = typer.Option("NL", "--location", help="Hostkey location code (for traffic_plans)"),
 ):
     """Pull live data from a provider API to populate the registry."""
     client = get_provider(provider, settings)
@@ -46,10 +48,14 @@ def discover(
         data = client.list_products()
     elif what == "os":
         data = client.list_os()
+    elif what == "traffic_plans":
+        if provider.lower() != "hostkey":
+            raise typer.BadParameter("traffic_plans is only supported for hostkey")
+        data = client.list_traffic_plans(preset, location)
     elif what == "regions":
         data = [r.model_dump() for r in client.discover_regions()]
     else:
-        raise typer.BadParameter("what must be regions | products | os")
+        raise typer.BadParameter("what must be regions | products | os | traffic_plans")
     console.print_json(json.dumps(data, default=str))
 
 
@@ -87,6 +93,13 @@ def adopt(
     ip: str = typer.Option(..., "--ip"),
     country: str = typer.Option("??", "--country", "-c"),
     name: Optional[str] = typer.Option(None, "--name", "-n"),
+    password: Optional[str] = typer.Option(
+        None, "--password", help="root password for first login (else SSH key is used)"
+    ),
+    provider: str = typer.Option("byo", "--provider", "-p", help="provider tag (e.g. aeza)"),
+    service_id: Optional[str] = typer.Option(
+        None, "--service-id", help="provider service id, so the node stays manageable"
+    ),
 ):
     """Adopt a hand-made server (IP + SSH) and install the sing-box stack."""
     from .orchestrator import adopt_node
@@ -95,8 +108,19 @@ def adopt(
         console.print("[red]refusing:[/red] RU exit bypasses nothing.")
         raise typer.Exit(1)
     inv = _load_inv()
+    provider_ref = {"service_id": service_id} if service_id else None
     try:
-        node = adopt_node(ip, inventory=inv, settings=settings, country=country, name=name, save=_save)
+        node = adopt_node(
+            ip,
+            inventory=inv,
+            settings=settings,
+            country=country,
+            name=name,
+            root_password=password,
+            provider_name=provider,
+            provider_ref=provider_ref,
+            save=_save,
+        )
     except RuntimeError as exc:
         console.print(f"[red]adopt failed:[/red] {exc}")
         raise typer.Exit(1) from exc
