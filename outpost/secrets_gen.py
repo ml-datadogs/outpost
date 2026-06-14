@@ -45,6 +45,7 @@ def generate_node_secrets() -> NodeSecrets:
     priv, pub = generate_reality_keypair()
     return NodeSecrets(
         hysteria2_password=generate_password(),
+        hysteria2_obfs_password=generate_password(),
         trojan_password=generate_password(),
         reality_uuid=str(uuid.uuid4()),
         reality_private_key=priv,

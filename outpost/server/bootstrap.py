@@ -19,6 +19,7 @@ import paramiko
 from ..config import Settings
 from ..config import settings as default_settings
 from ..models import Node
+from ..secrets_gen import generate_password
 from .singbox import render_singbox_config
 
 REMOTE_CONFIG = "/tmp/outpost-singbox.json"
@@ -94,6 +95,8 @@ def bootstrap_node(
 
     config_json = render_singbox_config(node, settings=settings, reality_dest=reality_dest)
     script = (settings.server_dir / "bootstrap.sh").read_text()
+    if node.secrets and not node.secrets.hysteria2_obfs_password:
+        node.secrets.hysteria2_obfs_password = generate_password()
 
     wait_for_ssh(node.ip, node.ssh_port)
     client = _connect(node, settings, root_password)
@@ -114,9 +117,27 @@ def bootstrap_node(
         _put(client, script, REMOTE_SCRIPT, mode=0o700)
 
         ports = f"{node.ports.hysteria2},{node.ports.trojan},{node.ports.vless_reality}"
-        sni = node.tls_domain or node.sni
-        env = f"OUTPOST_SNI={_shell_quote(sni)} OUTPOST_PORTS={_shell_quote(ports)}"
+        tls_domain = node.tls_domain or settings.tls_domain
+        sni = tls_domain or node.sni
+        env = (
+            f"OUTPOST_SNI={_shell_quote(sni)} "
+            f"OUTPOST_PORTS={_shell_quote(ports)}"
+        )
+        if tls_domain:
+            env += f" OUTPOST_TLS_DOMAIN={_shell_quote(tls_domain)}"
         _run(client, f"{env} bash {REMOTE_SCRIPT} {REMOTE_CONFIG}")
+        pin = _run(
+            client,
+            "tr -d '[:space:]' < /etc/sing-box/cert.sha256 2>/dev/null || "
+            "openssl x509 -in /etc/sing-box/cert.pem -noout -fingerprint -sha256 "
+            "| sed 's/sha256 Fingerprint=//I; s/://g' | tr '[:upper:]' '[:lower:]'",
+        ).strip()
+        if len(pin) == 64 and all(c in "0123456789abcdef" for c in pin):
+            node.tls_cert_sha256 = pin
+        if tls_domain:
+            node.tls_domain = tls_domain
+            node.insecure = False
+            node.sni = tls_domain
     finally:
         client.close()
 

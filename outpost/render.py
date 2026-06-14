@@ -3,6 +3,10 @@
 One source of truth (the inventory) -> two client-specific renderings:
   * Surge: native proxy lines, Hysteria2 + Trojan only (Surge can't read Reality).
   * Happ:  base64 of share links, Hysteria2 + Trojan + VLESS/Reality.
+
+Happ 4.11+ / Xray-core (2026-06+) reject allowInsecure/insecure/vcn.
+Self-signed: pin leaf cert with pcs=<hex SHA-256 fingerprint> only.
+Real cert (OUTPOST_TLS_DOMAIN): omit pcs/insecure entirely.
 """
 
 from __future__ import annotations
@@ -27,6 +31,23 @@ def _secrets(node: Node):
 
 def _frag(name: str) -> str:
     return quote(name, safe="")
+
+
+def _cert_pin_b64(hex_pin: str) -> str:
+    """Hysteria2 pinSHA256: base64-encoded raw SHA-256 digest (Surge/other clients)."""
+    return base64.b64encode(bytes.fromhex(hex_pin)).decode("ascii")
+
+
+def _happ_cert_pin(params: dict[str, str], node: Node) -> None:
+    """Happ 4.11+: hex pcs only; never insecure/allowInsecure/vcn/pinSHA256."""
+    if node.insecure and node.tls_cert_sha256:
+        params["pcs"] = node.tls_cert_sha256
+
+
+def _link_query(**params: str) -> str:
+    return "&".join(
+        f"{key}={quote(value, safe='')}" for key, value in params.items() if value != ""
+    )
 
 
 # --------------------------------------------------------------------------- Surge
@@ -66,30 +87,50 @@ def render_surge(inv: Inventory) -> str:
 def _link_hysteria2(node: Node) -> str:
     s = _secrets(node)
     sni = node.tls_domain or node.sni
-    return (
-        f"hysteria2://{quote(s.hysteria2_password, safe='')}@{node.ip}:{node.ports.hysteria2}"
-        f"/?insecure={1 if node.insecure else 0}&sni={quote(sni, safe='')}#{_frag(node.name + '-hy2')}"
-    )
+    params: dict[str, str] = {"sni": sni}
+    if s.hysteria2_obfs_password:
+        params["obfs"] = "salamander"
+        params["obfs-password"] = s.hysteria2_obfs_password
+    _happ_cert_pin(params, node)
+    query = _link_query(**params)
+    auth = quote(s.hysteria2_password, safe="")
+    suffix = f"/?{query}" if query else "/"
+    return f"hysteria2://{auth}@{node.ip}:{node.ports.hysteria2}{suffix}#{_frag(node.name + '-hy2')}"
 
 
 def _link_trojan(node: Node) -> str:
     s = _secrets(node)
     sni = node.tls_domain or node.sni
+    params: dict[str, str] = {
+        "security": "tls",
+        "type": "tcp",
+        "sni": sni,
+    }
+    _happ_cert_pin(params, node)
+    query = _link_query(**params)
     return (
         f"trojan://{quote(s.trojan_password, safe='')}@{node.ip}:{node.ports.trojan}"
-        f"?security=tls&sni={quote(sni, safe='')}&allowInsecure={1 if node.insecure else 0}&type=tcp"
-        f"#{_frag(node.name + '-trojan')}"
+        f"?{query}#{_frag(node.name + '-trojan')}"
     )
 
 
 def _link_reality(node: Node, reality_dest: str = DEFAULT_REALITY_DEST) -> str:
     s = _secrets(node)
+    # v2rayN / Happ compatible parameter set (no allowInsecure; Reality pins via pbk/sid).
+    query = _link_query(
+        encryption="none",
+        flow="xtls-rprx-vision",
+        security="reality",
+        type="tcp",
+        sni=reality_dest,
+        fp="chrome",
+        pbk=s.reality_public_key,
+        sid=s.reality_short_id,
+        spx="/",
+    )
     return (
         f"vless://{s.reality_uuid}@{node.ip}:{node.ports.vless_reality}"
-        f"?encryption=none&security=reality&type=tcp&flow=xtls-rprx-vision"
-        f"&sni={quote(reality_dest, safe='')}&fp=chrome"
-        f"&pbk={quote(s.reality_public_key, safe='')}&sid={s.reality_short_id}"
-        f"#{_frag(node.name + '-reality')}"
+        f"?{query}#{_frag(node.name + '-reality')}"
     )
 
 

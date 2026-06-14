@@ -7,6 +7,13 @@
       "listen": "::",
       "listen_port": {{ hysteria2_port }},
       "users": [{ "password": {{ hysteria2_password | tojson }} }],
+      {% if hysteria2_obfs_password %}
+      "obfs": {
+        "type": "salamander",
+        "password": {{ hysteria2_obfs_password | tojson }}
+      },
+      {% endif %}
+      "ignore_client_bandwidth": true,
       "masquerade": "https://www.bing.com",
       "tls": {
         "enabled": true,
@@ -41,7 +48,7 @@
           "enabled": true,
           "handshake": { "server": {{ reality_dest | tojson }}, "server_port": 443 },
           "private_key": {{ reality_private_key | tojson }},
-          "short_id": [{{ reality_short_id | tojson }}]
+          "short_id": [{{ reality_short_id | tojson }}, ""]
         }
       }
     }

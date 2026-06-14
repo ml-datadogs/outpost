@@ -14,7 +14,7 @@ def node() -> Node:
         region="nl",
         country="NL",
         ip="203.0.113.10",
-        ports=NodePorts(hysteria2=443, trojan=8443, vless_reality=2053),
+        ports=NodePorts(hysteria2=443, trojan=443, vless_reality=2053),
         secrets=generate_node_secrets(),
         status=NodeStatus.ACTIVE,
         tags=["managed"],

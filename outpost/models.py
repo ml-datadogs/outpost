@@ -48,6 +48,7 @@ class NodeSecrets(BaseModel):
     """Per-node generated secrets. Sensitive; lives only in encrypted inventory."""
 
     hysteria2_password: str
+    hysteria2_obfs_password: Optional[str] = None  # salamander obfs; set at bootstrap if missing
     trojan_password: str
     reality_uuid: str
     reality_private_key: str
@@ -57,7 +58,7 @@ class NodeSecrets(BaseModel):
 
 class NodePorts(BaseModel):
     hysteria2: int = 443
-    trojan: int = 8443
+    trojan: int = 443  # TCP 443 (Hy2 uses UDP 443 on the same port)
     vless_reality: int = 2053
 
 
@@ -79,6 +80,8 @@ class Node(BaseModel):
     tls_domain: Optional[str] = None
     sni: str = "www.bing.com"
     insecure: bool = True  # skip-cert-verify when using self-signed
+    # SHA-256 fingerprint (hex, lowercase) of the node TLS cert; set at bootstrap.
+    tls_cert_sha256: Optional[str] = None
 
     ports: NodePorts = Field(default_factory=NodePorts)
     protocols: List[Protocol] = Field(

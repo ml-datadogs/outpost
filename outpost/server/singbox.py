@@ -37,6 +37,7 @@ def render_singbox_config(
         trojan_port=node.ports.trojan,
         reality_port=node.ports.vless_reality,
         hysteria2_password=node.secrets.hysteria2_password,
+        hysteria2_obfs_password=node.secrets.hysteria2_obfs_password,
         trojan_password=node.secrets.trojan_password,
         reality_uuid=node.secrets.reality_uuid,
         reality_private_key=node.secrets.reality_private_key,

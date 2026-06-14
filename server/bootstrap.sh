@@ -2,13 +2,15 @@
 # Idempotent sing-box bootstrap. Run as root on a freshly provisioned node.
 # Usage: bootstrap.sh /path/to/config.json
 # Env:
-#   OUTPOST_SNI    common name for the self-signed cert (default www.bing.com)
-#   OUTPOST_PORTS  comma-separated ports to open, e.g. "443,8443,2053"
+#   OUTPOST_SNI           TLS CN / fallback SNI (default www.bing.com)
+#   OUTPOST_TLS_DOMAIN    if set, obtain Let's Encrypt cert for this domain
+#   OUTPOST_PORTS         comma-separated ports to open, e.g. "443,2053"
 set -euo pipefail
 
 CONFIG_SRC="${1:-/tmp/outpost-singbox.json}"
 SNI="${OUTPOST_SNI:-www.bing.com}"
-PORTS="${OUTPOST_PORTS:-443,8443,2053}"
+TLS_DOMAIN="${OUTPOST_TLS_DOMAIN:-}"
+PORTS="${OUTPOST_PORTS:-443,2053}"
 
 echo "[outpost] installing prerequisites"
 export DEBIAN_FRONTEND=noninteractive
@@ -24,12 +26,25 @@ fi
 
 mkdir -p /etc/sing-box
 
-if [ ! -f /etc/sing-box/cert.pem ] || [ ! -f /etc/sing-box/key.pem ]; then
+if [ -n "$TLS_DOMAIN" ]; then
+  echo "[outpost] obtaining Let's Encrypt cert for ${TLS_DOMAIN}"
+  apt-get install -y certbot >/dev/null
+  systemctl stop sing-box 2>/dev/null || true
+  certbot certonly --standalone -d "$TLS_DOMAIN" --non-interactive --agree-tos \
+    --register-unsafely-without-email --preferred-challenges http
+  install -m 644 "/etc/letsencrypt/live/${TLS_DOMAIN}/fullchain.pem" /etc/sing-box/cert.pem
+  install -m 600 "/etc/letsencrypt/live/${TLS_DOMAIN}/privkey.pem" /etc/sing-box/key.pem
+elif [ ! -f /etc/sing-box/cert.pem ] || [ ! -f /etc/sing-box/key.pem ]; then
   echo "[outpost] generating self-signed cert (CN=${SNI})"
   openssl req -x509 -nodes -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \
     -keyout /etc/sing-box/key.pem -out /etc/sing-box/cert.pem \
     -subj "/CN=${SNI}" -days 3650 >/dev/null 2>&1
 fi
+
+# Fingerprint for Happ/Xray share links (pcs / pinSHA256); hex lowercase, no colons.
+openssl x509 -in /etc/sing-box/cert.pem -noout -fingerprint -sha256 \
+  | sed 's/sha256 Fingerprint=//I; s/://g' | tr '[:upper:]' '[:lower:]' \
+  > /etc/sing-box/cert.sha256
 
 echo "[outpost] installing config"
 cp "$CONFIG_SRC" /etc/sing-box/config.json

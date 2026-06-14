@@ -32,7 +32,7 @@ def monitor_liveness(inventory: Inventory, save: Optional[Callable] = None) -> L
     """Update liveness for all managed nodes. Returns nodes whose status changed."""
     changed: List[Node] = []
     for node in inventory.nodes:
-        if "managed" not in node.tags and "byo" not in node.tags:
+        if not {"managed", "byo", "adopted"} & set(node.tags):
             continue
         if not node.ip:
             continue

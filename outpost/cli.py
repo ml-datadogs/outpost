@@ -108,7 +108,12 @@ def adopt(
         console.print("[red]refusing:[/red] RU exit bypasses nothing.")
         raise typer.Exit(1)
     inv = _load_inv()
-    provider_ref = {"service_id": service_id} if service_id else None
+    if service_id:
+        provider_ref = (
+            {"server_id": service_id} if provider.lower() == "hostkey" else {"service_id": service_id}
+        )
+    else:
+        provider_ref = None
     try:
         node = adopt_node(
             ip,
