@@ -21,11 +21,8 @@ jobs:
       AEZA_API_KEY: ${{ secrets.AEZA_API_KEY }}
       AEZA_PIN: ${{ secrets.AEZA_PIN }}
       ZOMRO_AUTH: ${{ secrets.ZOMRO_AUTH }}
-      HOSTKEY_API_KEY: ${{ secrets.HOSTKEY_API_KEY }}
-      HOSTKEY_EMAIL: ${{ secrets.HOSTKEY_EMAIL }}
-      HOSTKEY_PASSWORD: ${{ secrets.HOSTKEY_PASSWORD }}
-      HOSTKEY_TRAFFIC_PLAN: ${{ vars.HOSTKEY_TRAFFIC_PLAN }}
-      HOSTKEY_DEPLOY_OPTIONS: ${{ vars.HOSTKEY_DEPLOY_OPTIONS }}
+      # Hostkey is parked (state/registry.yaml: policy_ok=false), so its credentials
+      # are deliberately absent here. Re-add them if you re-enable the provider.
       # Per-node DNS + real certs (docs/dns-tls.md). Without these a rotated node
       # falls back to a self-signed cert.
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

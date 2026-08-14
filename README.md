@@ -1,7 +1,7 @@
 # Outpost
 
 Automated proxy fleet for restricted networks. Outpost provisions fresh VPS proxies
-on RU-friendly hosts (iteration 1: **Zomro** + **Aeza** + **Hostkey**, non-RU regions), bootstraps a
+on RU-friendly hosts (**Zomro** + **Aeza**; Hostkey parked, non-RU regions), bootstraps a
 [`sing-box`](https://sing-box.sagernet.org/) stack over SSH, and renders **one
 token-gated subscription URL** that auto-updates in both **Surge** and **Happ** — with
 CI + on-Mac monitoring that **auto-rotates blocked nodes**.
@@ -41,6 +41,20 @@ provisioning API** — currently **iphoster** — are registered too, but only f
 hand-ordered boxes brought in via `outpost adopt`; rotation never auto-provisions
 or API-destroys them. Public tested configs (igareck/vpn-configs-for-russia) are
 the emergency tier below that — see [docs/fallbacks.md](docs/fallbacks.md).
+
+### Parked providers
+
+**Hostkey** is parked by choice (`policy_ok: false` in `state/registry.yaml`), not
+because it fails a gate — its InvAPI flow (panel login + traffic plans + deploy
+options) is more moving parts than it currently earns. Consequences:
+
+- `provision` / `rotate` never target it, and CI carries no `HOSTKEY_*` secrets.
+- `outpost/providers/hostkey.py` and its tests stay intact and passing.
+- Already-adopted hostkey nodes keep running, keep rendering into subscriptions,
+  and stay destroyable (`destroy` still resolves the provider client).
+
+To bring it back: set `policy_ok: true`, restore the `HOSTKEY_*` credentials in
+`.env` and the workflow env.
 
 ## Architecture
 
@@ -96,10 +110,7 @@ export SOPS_AGE_KEY_FILE=~/.config/sops/age/outpost.key
 |---|---|
 | `AEZA_API_KEY` | https://my.aeza.net/settings/apikeys |
 | `ZOMRO_AUTH` | Zomro API session token (api.zomro.com) |
-| `HOSTKEY_API_KEY` | Hostkey InvAPI account key (works after you have an active server) |
-| `HOSTKEY_EMAIL` / `HOSTKEY_PASSWORD` | Invapi panel login — **required to order the first server** |
-| `HOSTKEY_TRAFFIC_PLAN` | Optional traffic plan id (auto-tried; use `37` for RU/whmcs_itb if needed) |
-| `HOSTKEY_DEPLOY_OPTIONS` | Optional billing endpoint (e.g. `whmcs_itb` for RU accounts) |
+| `HOSTKEY_*` | **parked** — see [Parked providers](#parked-providers); not needed while `policy_ok: false` |
 | `OUTPOST_SSH_PUBLIC_KEY_FILE` / `..._PRIVATE_KEY_FILE` | bootstrap SSH key |
 | `OUTPOST_SUB_TOKEN` | secret path segment for the subscription URL |
 | `OUTPOST_DNS_ZONE` / `CLOUDFLARE_API_TOKEN` | per-node DNS + real certs — see [docs/dns-tls.md](docs/dns-tls.md) |
@@ -113,12 +124,11 @@ export SOPS_AGE_KEY_FILE=~/.config/sops/age/outpost.key
 uv run outpost discover --provider aeza  --what regions
 uv run outpost discover --provider zomro --what products
 uv run outpost discover --provider zomro --what os        # note the OS uid for Zomro
-uv run outpost discover --provider hostkey --what regions # preset/location/os_id for registry
+# (hostkey is parked; see "Parked providers")
 
 # 2. Provision an exit (picks an eligible non-RU region automatically)
 uv run outpost provision --provider zomro
 uv run outpost provision --provider aeza --region Netherlands
-uv run outpost provision --provider hostkey --region 108-NL
 
 # 3. See the fleet
 uv run outpost list
@@ -199,8 +209,7 @@ publish to KV → commit state`. `.github/workflows/fallback.yml` runs every 6 h
 (igareck/vpn-configs-for-russia) into KV (`fallback` / `fallback-white` keys); it
 needs only the Cloudflare secrets and the same `CF_OK` variable. Required repository **secrets**:
 
-`AGE_KEY`, `AEZA_API_KEY`, `AEZA_PIN`, `ZOMRO_AUTH`, `HOSTKEY_API_KEY`,
-`HOSTKEY_EMAIL`, `HOSTKEY_PASSWORD`, `OUTPOST_SSH_PRIVATE_KEY`,
+`AGE_KEY`, `AEZA_API_KEY`, `AEZA_PIN`, `ZOMRO_AUTH`, `OUTPOST_SSH_PRIVATE_KEY`,
 `OUTPOST_SSH_PUBLIC_KEY`, `OUTPOST_TLS_DOMAIN` (optional),
 `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `KV_NAMESPACE_ID`.
 
@@ -208,8 +217,7 @@ Rotation provisions replacements, so a provider whose credentials are missing he
 is unusable as a rotation target even when the registry lists it.
 
 Repository **variables**: `CF_OK=true` once the Worker + KV exist (enables
-publishing), `OUTPOST_DNS_ZONE` for per-node DNS + certs, and optionally
-`HOSTKEY_TRAFFIC_PLAN` / `HOSTKEY_DEPLOY_OPTIONS`.
+publishing) and `OUTPOST_DNS_ZONE` for per-node DNS + certs.
 
 ## Security
 

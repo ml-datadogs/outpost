@@ -45,10 +45,15 @@ providers:
         enabled: false
         product_ref: { pricelist: "", datacenter: "", os: "" }
 
+  # PARKED by operator choice (2026-08-15), not a policy failure: the InvAPI
+  # integration (panel login + traffic plans + deploy options) is more moving parts
+  # than it earns right now. Code in outpost/providers/hostkey.py is kept intact -
+  # flip policy_ok back to true to re-enable provisioning/rotation here.
+  # Existing adopted hostkey nodes keep running and stay manageable.
   - name: hostkey
-    policy_ok: true
+    policy_ok: false
     sanctioned: false
-    notes: "RU-friendly InvAPI billing. Hourly VPS (vm.pico). NL primary, DE for diversity."
+    notes: "PARKED (operator choice, not policy). RU-friendly InvAPI billing, hourly VPS (vm.pico)."
     regions:
       - code: "108-NL"
         country: NL
