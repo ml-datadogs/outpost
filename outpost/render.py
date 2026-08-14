@@ -45,9 +45,7 @@ def _happ_cert_pin(params: dict[str, str], node: Node) -> None:
 
 
 def _link_query(**params: str) -> str:
-    return "&".join(
-        f"{key}={quote(value, safe='')}" for key, value in params.items() if value != ""
-    )
+    return "&".join(f"{key}={quote(value, safe='')}" for key, value in params.items() if value != "")
 
 
 def _link_host(node: Node) -> str:
@@ -134,10 +132,7 @@ def _link_reality(node: Node, reality_dest: str = DEFAULT_REALITY_DEST, port: Op
         spx="/",
     )
     label = node.name + "-reality" + (f"-{listen_port}" if listen_port != node.ports.vless_reality else "")
-    return (
-        f"vless://{s.reality_uuid}@{node.ip}:{listen_port}"
-        f"?{query}#{_frag(label)}"
-    )
+    return f"vless://{s.reality_uuid}@{node.ip}:{listen_port}?{query}#{_frag(label)}"
 
 
 def render_happ_links(inv: Inventory, reality_dest: str = DEFAULT_REALITY_DEST) -> List[str]:

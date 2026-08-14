@@ -43,7 +43,7 @@ Bootstrap deploys both: `outpost/server/bootstrap.py` uploads sing-box + Xray co
 |-----------|-------|-------|
 | Protocol | VLESS + Reality | TCP |
 | Ports | **2053** (primary), **443** (backup) | Xray listens on both |
-| SNI | `www.microsoft.com` | Must match server `dest` / `serverNames` |
+| SNI | `www.cloudflare.com` | Must match server `dest` / `serverNames` — see [Choosing a Reality dest](#choosing-a-reality-dest) |
 | Fingerprint | **`firefox`** | `chrome` triggered more DPI on test path |
 | Flow | **none** | Do **not** use `xtls-rprx-vision` on this path |
 | `pbk` / `sid` | From inventory | Must match server keypair + `shortIds` |
@@ -52,8 +52,45 @@ Bootstrap deploys both: `outpost/server/bootstrap.py` uploads sing-box + Xray co
 Example share link (credentials from your inventory):
 
 ```
-vless://<uuid>@<ip>:2053?encryption=none&security=reality&type=tcp&sni=www.microsoft.com&fp=firefox&pbk=<public_key>&sid=<short_id>&spx=%2F#node-reality
+vless://<uuid>@<ip>:2053?encryption=none&security=reality&type=tcp&sni=www.cloudflare.com&fp=firefox&pbk=<public_key>&sid=<short_id>&spx=%2F#node-reality
 ```
+
+### Choosing a Reality dest
+
+Reality splices into the real TLS handshake it fetches from `dest`, so **the dest's
+certificate chain must fit in Reality's handshake buffer (~2.9 KB)**. Exceed it and
+the failure is deeply misleading: client auth *succeeds* (the server logs a valid
+`AuthKey` and matching `ClientShortId`), then the handshake dies with
+`isHandshakeComplete: false` and the connection is dropped as "invalid". Clients just
+show a dead node.
+
+This is exactly what happened on 2026-08-15: `www.microsoft.com` had grown to a
+5880-byte chain (8273-byte `Certificate` message) against 2896 bytes of buffer, so
+every authenticated client failed while plain `curl` still got a valid Microsoft cert
+(unauthenticated traffic is simply proxied through, which makes the node *look* fine).
+
+Measured chains (2026-08-15):
+
+| Host | Chain | Verdict |
+|---|---|---|
+| `www.cloudflare.com` | ~2493 B | **current default** |
+| `speed.cloudflare.com` | ~2520 B | ok |
+| `gateway.icloud.com` | ~3198 B | too big |
+| `www.apple.com` | ~3231 B | too big |
+| `dl.google.com` | ~3513 B | too big |
+| `www.microsoft.com` | ~5880 B | **broken** |
+
+Re-measure before changing it — chains grow over time, which is precisely how this
+broke:
+
+```bash
+openssl s_client -connect <host>:443 -servername <host> -showcerts </dev/null 2>/dev/null \
+  | sed -n '/BEGIN CERT/,/END CERT/p' | grep -v CERTIFICATE----- | tr -d '\n' | wc -c
+```
+
+To debug a suspected dest problem, set `"show": true` in `realitySettings` plus
+`"loglevel": "debug"`, restart xray, and watch `journalctl -u xray` during a client
+connection: the `len(s2cSaved)` / `Certificate:` pair shows the mismatch directly.
 
 Port **443** link is identical except `:443` and name suffix `-443`.
 

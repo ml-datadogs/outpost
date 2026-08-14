@@ -20,7 +20,7 @@ from ..config import Settings
 from ..config import settings as default_settings
 from ..models import Node
 from ..secrets_gen import generate_password
-from .singbox import render_singbox_config
+from .singbox import DEFAULT_REALITY_DEST, render_singbox_config
 from .xray import render_xray_config
 
 REMOTE_CONFIG = "/tmp/outpost-singbox.json"
@@ -90,7 +90,7 @@ def bootstrap_node(
     node: Node,
     settings: Settings = default_settings,
     root_password: Optional[str] = None,
-    reality_dest: str = "www.microsoft.com",
+    reality_dest: str = DEFAULT_REALITY_DEST,
 ) -> None:
     if not node.ip:
         raise BootstrapError(f"node {node.id} has no IP")

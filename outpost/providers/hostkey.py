@@ -80,7 +80,8 @@ class HostkeyProvider(BaseProvider):
         twofa = result.get("2fa") or result.get("twofa")
         if twofa and str(twofa).lower() not in ("", "0", "false", "none"):
             raise ProviderError(
-                "hostkey login requires 2FA; disable 2FA on the Invapi account or complete login in the panel first"
+                "hostkey login requires 2FA; disable 2FA on the Invapi account "
+                "or complete login in the panel first"
             )
         currency = result.get("currency_code")
         if currency:
@@ -424,7 +425,9 @@ class HostkeyProvider(BaseProvider):
         return name
 
     # --- lifecycle ---------------------------------------------------------
-    def _resolve_server_from_callback(self, callback: str, timeout: int = 120, interval: int = 6) -> Optional[str]:
+    def _resolve_server_from_callback(
+        self, callback: str, timeout: int = 120, interval: int = 6
+    ) -> Optional[str]:
         deadline = time.time() + timeout
         while time.time() < deadline:
             try:

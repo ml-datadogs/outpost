@@ -12,7 +12,13 @@ from ..models import Node
 
 CERT_PATH = "/etc/sing-box/cert.pem"
 KEY_PATH = "/etc/sing-box/key.pem"
-DEFAULT_REALITY_DEST = "www.microsoft.com"
+# Reality steals the TLS handshake from this host, so its certificate chain must fit
+# in Reality's handshake buffer (~2.9 KB). www.microsoft.com was used until its chain
+# grew to ~5.9 KB (8273-byte Certificate message): auth still succeeds, but the spliced
+# handshake never completes and every authenticated client is dropped. Cloudflare's
+# ECDSA chain is ~2.5 KB. Verify a replacement before switching:
+#   openssl s_client -connect <host>:443 -servername <host> -showcerts
+DEFAULT_REALITY_DEST = "www.cloudflare.com"
 
 
 def render_singbox_config(

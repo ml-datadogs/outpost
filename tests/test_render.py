@@ -69,7 +69,11 @@ def test_happ_secure_node_no_pcs(node, inventory):
 
 
 def test_happ_reality_v2rayn_params(node, inventory):
-    reality = next(link for link in render_happ_links(inventory) if link.startswith("vless://") and "-443" not in link.split("#")[-1])
+    reality = next(
+        link
+        for link in render_happ_links(inventory)
+        if link.startswith("vless://") and "-443" not in link.split("#")[-1]
+    )
     assert "security=reality" in reality
     assert "fp=firefox" in reality
     assert "flow=" not in reality

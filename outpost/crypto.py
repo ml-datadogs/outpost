@@ -56,8 +56,22 @@ def encrypt_to(path: Path, plaintext_yaml: str) -> None:
         tf.write(plaintext_yaml)
         tmp_path = tf.name
     try:
+        # sops resolves .sops.yaml creation rules against the INPUT path. Without
+        # --filename-override it sees the tempfile (/var/folders/.../tmpXXX.yaml),
+        # matches no rule, and fails with "no matching creation rules found" - which
+        # made every save fail as soon as an encrypted inventory existed.
         proc = subprocess.run(
-            ["sops", "--encrypt", "--input-type", "yaml", "--output-type", "yaml", tmp_path],
+            [
+                "sops",
+                "--encrypt",
+                "--input-type",
+                "yaml",
+                "--output-type",
+                "yaml",
+                "--filename-override",
+                str(path),
+                tmp_path,
+            ],
             capture_output=True,
             text=True,
         )

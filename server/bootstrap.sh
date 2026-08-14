@@ -80,10 +80,12 @@ systemctl enable sing-box >/dev/null 2>&1 || true
 systemctl restart sing-box
 
 if [ -n "$XRAY_CONFIG_SRC" ] && [ -f "$XRAY_CONFIG_SRC" ]; then
-  echo "[outpost] installing xray-core (Happ Reality)"
-  if ! command -v xray >/dev/null 2>&1; then
-    bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
-  fi
+  # Always run the installer, never just "is xray present?": an adopted box may carry
+  # someone else's build (e.g. a leftover Amnezia install) whose Reality behaviour we
+  # have not validated. The installer is idempotent and no-ops when already current.
+  echo "[outpost] installing/updating xray-core (Happ Reality)"
+  bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
+  xray version | head -n 1
   mkdir -p /usr/local/etc/xray
   install -m 644 "$XRAY_CONFIG_SRC" /usr/local/etc/xray/config.json
   xray run -test -config /usr/local/etc/xray/config.json

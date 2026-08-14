@@ -2,6 +2,7 @@
 """Open temporary TCP listeners on candidate ports so a client can probe which
 egress ports the restricted network allows. Auto-stops after a timeout.
 Skips ports already in use (e.g. 22, 2053, 8443)."""
+
 import socket
 import sys
 import threading
