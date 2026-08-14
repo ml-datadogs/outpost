@@ -20,6 +20,33 @@ def test_alternative_provider_prefers_different():
     assert rotate_mod._alternative_provider(reg, "zomro") == "aeza"
 
 
+def test_alternative_provider_skips_manual():
+    reg = _registry()
+    reg.providers.append(
+        Provider(
+            name="iphoster",
+            policy_ok=True,
+            regions=[Region(code="de", country="DE", enabled=True)],
+        )
+    )
+    # even with an enabled non-RU region, a manual provider is never a rotation target
+    assert rotate_mod._alternative_provider(reg, "aeza") == "zomro"
+    assert rotate_mod._alternative_provider(reg, "iphoster") == "aeza"
+
+
+def test_reap_never_calls_api_for_manual_provider(node):
+    node.provider = "iphoster"
+    node.status = NodeStatus.RETIRING
+    node.retire_after = datetime.now(timezone.utc) - timedelta(minutes=1)
+    node.provider_ref = {"service_id": "123"}
+    inv = Inventory()
+    inv.upsert(node)
+    # get_provider would raise ProviderError for iphoster; reap must not reach it
+    removed = rotate_mod.reap_retired(inv, settings=Settings())
+    assert removed == [node.id]
+    assert inv.get(node.id) is None
+
+
 def test_needs_replacement(node):
     node.status = NodeStatus.BLOCKED
     assert rotate_mod.needs_replacement(node)

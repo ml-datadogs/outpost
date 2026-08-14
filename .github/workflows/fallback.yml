@@ -1,0 +1,45 @@
+name: fallback-sync
+
+# Mirror the tier-3 public fallback subscriptions (igareck/vpn-configs-for-russia)
+# into Cloudflare KV. Upstream retests configs every ~2h; every 6h is fresh enough
+# for an emergency tier and keeps API traffic polite. Nothing is committed — the
+# "current version" lives in KV, served at /<token>/fallback[-white].
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: outpost-fallback
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install project
+        run: uv sync --frozen
+
+      - name: Fetch + validate upstream fallback bundles
+        run: uv run outpost fallback --out dist-subs
+
+      - name: Publish fallback bundles to Cloudflare KV
+        if: ${{ vars.CF_OK == 'true' }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          KV_NAMESPACE_ID: ${{ secrets.KV_NAMESPACE_ID }}
+        run: |
+          npx --yes wrangler kv key put --namespace-id "$KV_NAMESPACE_ID" fallback        --path dist-subs/outpost.fallback.txt
+          npx --yes wrangler kv key put --namespace-id "$KV_NAMESPACE_ID" fallback-white  --path dist-subs/outpost.fallback-white.txt

@@ -73,6 +73,31 @@ providers:
           os_id: "237"
           deploy_period: monthly
 
+  # MANUAL provider (no provisioning API): order in the panel, then
+  #   uv run outpost adopt --provider iphoster --ip <ip> --country <cc>
+  # Rotation never auto-provisions here (see MANUAL_PROVIDERS in outpost/providers).
+  - name: iphoster
+    policy_ok: true    # EE jurisdiction (IPhoster OU); RU-friendly payments: RU card gateway, Payeer, crypto (BTC/ETH/LTC)
+    sanctioned: false
+    notes: >-
+      Panel/WHMCS only - no API, so adopt-tier. KVM VPS, cheap (from ~128 RUB/mo).
+      Locations: DE/PL/FR/GB/US/CA. Caveat from reviews: location selection via panel
+      is unreliable (may land in a different country) - verify the exit IP geo before
+      adopting. Known-good in practice: amnezia/xray stacks run fine on their VPS.
+    regions:
+      - code: "de"
+        country: DE
+        city: "Germany"
+        canary: null
+        enabled: false   # manual tier; enabled flag kept false so no gate ever selects it
+        product_ref: {}
+      - code: "pl"
+        country: PL
+        city: "Poland"
+        canary: null
+        enabled: false
+        product_ref: {}
+
   # Documented EXCLUSION (kept for visibility; not eligible).
   - name: hetzner
     policy_ok: false   # bans/suspends RU/CIS accounts and freezes payment

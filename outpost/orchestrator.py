@@ -8,8 +8,9 @@ from typing import Optional
 
 from .config import Settings
 from .config import settings as default_settings
+from .dns import assign_hostname
 from .models import Node, NodeStatus, Provider, Region, Registry
-from .providers import ProvisionSpec, get_provider
+from .providers import MANUAL_PROVIDERS, ProvisionSpec, get_provider
 from .secrets_gen import generate_node_secrets
 from .server.bootstrap import bootstrap_node
 
@@ -76,6 +77,8 @@ def provision_node(
     name: Optional[str] = None,
     save=None,
 ) -> Node:
+    if provider_name in MANUAL_PROVIDERS:
+        raise OrchestrationError(f"provider {provider_name} has no provisioning API; use `outpost adopt`")
     provider_meta = registry.get(provider_name)
     if provider_meta is None:
         raise OrchestrationError(f"provider {provider_name} not in registry")
@@ -103,6 +106,12 @@ def provision_node(
         save(inventory)  # persist early so a failed bootstrap is still tracked
 
     node.ip = result.ip or client.wait_for_ip(result.provider_ref)
+    inventory.upsert(node)
+    if save:
+        save(inventory)
+
+    # Own DNS name before bootstrap: certbot's HTTP-01 challenge needs it to resolve.
+    assign_hostname(node, settings=settings)
     inventory.upsert(node)
     if save:
         save(inventory)
@@ -146,6 +155,10 @@ def adopt_node(
         tags=["byo" if provider_name == "byo" else "adopted"],
     )
     node.status = NodeStatus.PROVISIONING
+    inventory.upsert(node)
+    if save:
+        save(inventory)
+    assign_hostname(node, settings=settings)
     inventory.upsert(node)
     if save:
         save(inventory)

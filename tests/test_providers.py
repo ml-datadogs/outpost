@@ -1,12 +1,21 @@
 import hashlib
 import json
 
+import pytest
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from outpost.models import Region
+from outpost.providers import MANUAL_PROVIDERS, get_provider
 from outpost.providers.aeza import _SECURE_SALT, AezaProvider
 from outpost.providers.base import ProviderError, ProvisionSpec, infer_country
 from outpost.providers.hostkey import HostkeyProvider
 from outpost.providers.zomro import ZomroProvider, _unwrap
+
+
+def test_manual_providers_have_no_client():
+    assert "iphoster" in MANUAL_PROVIDERS
+    for name in MANUAL_PROVIDERS:
+        with pytest.raises(ProviderError, match="adopt"):
+            get_provider(name)
 
 
 def _aeza_secure_params(pin: str, payload: dict) -> dict:
@@ -322,4 +331,3 @@ def test_hostkey_error_raises(monkeypatch):
         raise AssertionError("expected ProviderError")
     except ProviderError as exc:
         assert "nope" in str(exc)
-

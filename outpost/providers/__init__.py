@@ -6,9 +6,18 @@ from ..config import Settings
 from ..config import settings as default_settings
 from .base import BaseProvider, ProviderError, ProvisionResult, ProvisionSpec
 
+# Providers with no provisioning API: order in the panel, then `outpost adopt --provider <name>`.
+# Never auto-provisioned, never API-destroyed (see rotate.reap_retired / cli.destroy).
+MANUAL_PROVIDERS = {"byo", "iphoster"}
+
 
 def get_provider(name: str, settings: Settings = default_settings) -> BaseProvider:
     name = name.lower()
+    if name in MANUAL_PROVIDERS:
+        raise ProviderError(
+            f"{name} has no provisioning API; order the VPS manually, "
+            f"then run `outpost adopt --provider {name} --ip <ip> --country <cc>`"
+        )
     if name == "aeza":
         from .aeza import AezaProvider
 
@@ -36,6 +45,7 @@ def get_provider(name: str, settings: Settings = default_settings) -> BaseProvid
 
 
 __all__ = [
+    "MANUAL_PROVIDERS",
     "BaseProvider",
     "ProviderError",
     "ProvisionResult",

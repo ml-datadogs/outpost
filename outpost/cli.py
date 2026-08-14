@@ -14,7 +14,7 @@ from rich.table import Table
 from . import store
 from .config import settings
 from .models import Inventory
-from .providers import ProviderError, get_provider
+from .providers import MANUAL_PROVIDERS, ProviderError, get_provider
 
 app = typer.Typer(
     add_completion=False, help="Automated proxy fleet: provision, monitor, rotate, render subscriptions."
@@ -177,10 +177,17 @@ def destroy(
     if not yes:
         typer.confirm(f"Destroy {node.display}?", abort=True)
     try:
-        if node.provider_ref and node.provider != "byo":
+        if node.provider_ref and node.provider not in MANUAL_PROVIDERS:
             get_provider(node.provider, settings).destroy(node.provider_ref)
     except (ProviderError, RuntimeError) as exc:
         console.print(f"[yellow]provider destroy warning:[/yellow] {exc}")
+    try:
+        from .dns import release_hostname
+
+        if release_hostname(node, settings=settings):
+            console.print(f"[green]released DNS[/green] {node.tls_domain}")
+    except RuntimeError as exc:
+        console.print(f"[yellow]dns release warning:[/yellow] {exc}")
     inv.remove(node_id)
     _save(inv)
     console.print(f"[green]removed[/green] {node_id}")
@@ -215,6 +222,67 @@ def render(
         for fname, content in outputs.items():
             console.rule(fname)
             console.print(content)
+
+
+# --------------------------------------------------------------------------- recert
+@app.command()
+def recert(
+    node_id: Optional[str] = typer.Argument(None, help="node to re-issue (default: all active)"),
+    password: Optional[str] = typer.Option(
+        None, "--password", help="root password, if key auth is not set up"
+    ),
+):
+    """Give nodes their own DNS name + a real Let's Encrypt cert, then re-bootstrap.
+
+    Use after configuring OUTPOST_DNS_ZONE to migrate nodes off self-signed certs.
+    """
+    from .dns import DNSError, assign_hostname
+    from .server.bootstrap import BootstrapError, bootstrap_node
+
+    if not settings.dns_zone or not settings.cloudflare_api_token:
+        console.print("[red]not configured:[/red] set OUTPOST_DNS_ZONE and CLOUDFLARE_API_TOKEN first")
+        raise typer.Exit(1)
+
+    inv = _load_inv()
+    targets = [inv.get(node_id)] if node_id else list(inv.active())
+    if not targets or targets[0] is None:
+        console.print(f"[red]no node[/red] {node_id or ''}")
+        raise typer.Exit(1)
+
+    failed = False
+    for node in targets:
+        if node is None or not node.ip:
+            continue
+        try:
+            fqdn = assign_hostname(node, settings=settings)
+            console.print(f"{node.name}: dns -> [bold]{fqdn}[/bold]")
+            bootstrap_node(node, settings=settings, root_password=password)
+            _save(inv)
+        except (DNSError, BootstrapError, RuntimeError) as exc:
+            failed = True
+            console.print(f"[red]{node.name} failed:[/red] {exc}")
+            continue
+        status = "real cert" if not node.insecure else "self-signed"
+        console.print(f"[green]{node.name}[/green] re-bootstrapped ({status})")
+    if failed:
+        raise typer.Exit(1)
+
+
+# --------------------------------------------------------------------------- fallback
+@app.command()
+def fallback(
+    out: Path = typer.Option(Path("dist-subs"), "--out", help="directory to write fallback files"),
+):
+    """Sync tier-3 public fallback subscriptions from igareck/vpn-configs-for-russia."""
+    from .fallback import FallbackError, sync
+
+    try:
+        written = sync(out)
+    except FallbackError as exc:
+        console.print(f"[red]fallback sync failed:[/red] {exc}")
+        raise typer.Exit(1) from exc
+    for key, path in written.items():
+        console.print(f"[green]wrote[/green] {path} ({key})")
 
 
 # --------------------------------------------------------------------------- monitor

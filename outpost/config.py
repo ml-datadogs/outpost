@@ -44,7 +44,14 @@ class Settings:
 
     # Subscription distribution
     sub_token: Optional[str] = None
+    # Legacy single-node fallback; prefer dns_zone so every node gets its own name.
     tls_domain: Optional[str] = None
+
+    # Per-node DNS (Cloudflare). With a zone set, each node gets
+    # "<dns_prefix>-<id>.<dns_zone>" and a real Let's Encrypt cert.
+    cloudflare_api_token: Optional[str] = None
+    dns_zone: Optional[str] = None
+    dns_prefix: str = "exit"
 
     # Encryption
     sops_age_key_file: Optional[Path] = None
@@ -74,6 +81,9 @@ class Settings:
             ssh_private_key_file=_expand(os.getenv("OUTPOST_SSH_PRIVATE_KEY_FILE")),
             sub_token=os.getenv("OUTPOST_SUB_TOKEN") or None,
             tls_domain=os.getenv("OUTPOST_TLS_DOMAIN") or None,
+            cloudflare_api_token=os.getenv("CLOUDFLARE_API_TOKEN") or None,
+            dns_zone=os.getenv("OUTPOST_DNS_ZONE") or None,
+            dns_prefix=os.getenv("OUTPOST_DNS_PREFIX") or "exit",
             sops_age_key_file=_expand(os.getenv("SOPS_AGE_KEY_FILE")),
             lan_gateway=os.getenv("OUTPOST_LAN_GATEWAY") or None,
             lan_dns=os.getenv("OUTPOST_LAN_DNS") or None,

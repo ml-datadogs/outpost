@@ -9,7 +9,7 @@ from .config import Settings
 from .config import settings as default_settings
 from .models import Inventory, Node, NodeStatus, Registry
 from .orchestrator import provision_node
-from .providers import ProviderError, get_provider
+from .providers import MANUAL_PROVIDERS, ProviderError, get_provider
 
 DEFAULT_GRACE_MINUTES = 15
 
@@ -18,13 +18,27 @@ def _now():
     return datetime.now(timezone.utc)
 
 
+def _release_dns(node: Node, settings: Settings) -> None:
+    """Drop the node's DNS record. Never block a reap on a DNS failure."""
+    from .dns import DNSError, release_hostname
+
+    try:
+        release_hostname(node, settings=settings)
+    except (DNSError, RuntimeError) as exc:
+        node.health.note = f"dns release failed: {exc}"
+
+
 def needs_replacement(node: Node) -> bool:
     return node.status in (NodeStatus.BLOCKED, NodeStatus.DOWN) and "managed" in node.tags
 
 
 def _alternative_provider(registry: Registry, current: str) -> Optional[str]:
     """Prefer a DIFFERENT eligible provider than the failing one (diversity)."""
-    eligible = [p.name for p in registry.providers if p.policy_ok and p.eligible_regions()]
+    eligible = [
+        p.name
+        for p in registry.providers
+        if p.policy_ok and p.name not in MANUAL_PROVIDERS and p.eligible_regions()
+    ]
     others = [n for n in eligible if n != current]
     return (others or eligible or [None])[0]
 
@@ -82,9 +96,10 @@ def reap_retired(
         if node.retire_after and _now() < node.retire_after:
             continue
         try:
-            if node.provider_ref and node.provider not in ("byo",):
+            if node.provider_ref and node.provider not in MANUAL_PROVIDERS:
                 client = get_provider(node.provider, settings)
                 client.destroy(node.provider_ref)
+            _release_dns(node, settings)
             inventory.remove(node.id)
             destroyed.append(node.id)
             if save:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 from typing import Optional
@@ -22,8 +23,42 @@ def _read_yaml(path: Path) -> dict:
     return yaml.safe_load(text) or {}
 
 
+# PyYAML only quotes strings IT would re-read as another type. Tokens like the node
+# id "967e00" are plain strings to PyYAML (its float rule needs a dot) but scientific
+# notation to YAML 1.1/1.2 parsers — sops rewrites such a value to "967", silently
+# corrupting the id on every encrypt round-trip. Quote anything another parser could
+# read as a number or bool.
+_AMBIGUOUS_SCALAR = re.compile(
+    r"""^[-+]?(?:
+        \d[\d_]*(?:\.[\d_]*)?(?:[eE][-+]?\d+)?    # 12  1.5  967e00  1_000
+        |\.[\d_]+(?:[eE][-+]?\d+)?                # .5
+        |0[bB][01_]+|0[oO][0-7_]+|0[xX][\dA-Fa-f_]+  # 0b1  0o7  0x1f
+    )$""",
+    re.VERBOSE,
+)
+_AMBIGUOUS_BOOL = re.compile(r"^(?:y|n|yes|no|true|false|on|off)$", re.IGNORECASE)
+
+
+class _SafeDumper(yaml.SafeDumper):
+    """SafeDumper that quotes scalars other YAML implementations would coerce."""
+
+
+def _represent_str(dumper: yaml.SafeDumper, value: str):
+    style = "'" if _AMBIGUOUS_SCALAR.match(value) or _AMBIGUOUS_BOOL.match(value) else None
+    return dumper.represent_scalar("tag:yaml.org,2002:str", value, style=style)
+
+
+_SafeDumper.add_representer(str, _represent_str)
+
+
 def _dump_yaml(data: dict) -> str:
-    return yaml.safe_dump(data, sort_keys=False, allow_unicode=True, default_flow_style=False)
+    return yaml.dump(
+        data,
+        Dumper=_SafeDumper,
+        sort_keys=False,
+        allow_unicode=True,
+        default_flow_style=False,
+    )
 
 
 def _write_yaml(path: Path, data: dict) -> None:

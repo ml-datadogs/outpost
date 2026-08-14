@@ -36,6 +36,12 @@ A `(provider, region)` may host an exit only if **all three** hold:
 Hetzner is kept in the registry but excluded on gate 3 (it bans/suspends RU/CIS
 accounts). DigitalOcean is avoided (range-blocked). See `state/registry.yaml`.
 
+**Manual (adopt-tier) providers:** hosts with RU-friendly billing but **no
+provisioning API** — currently **iphoster** — are registered too, but only for
+hand-ordered boxes brought in via `outpost adopt`; rotation never auto-provisions
+or API-destroys them. Public tested configs (igareck/vpn-configs-for-russia) are
+the emergency tier below that — see [docs/fallbacks.md](docs/fallbacks.md).
+
 ## Architecture
 
 ```
@@ -96,7 +102,8 @@ export SOPS_AGE_KEY_FILE=~/.config/sops/age/outpost.key
 | `HOSTKEY_DEPLOY_OPTIONS` | Optional billing endpoint (e.g. `whmcs_itb` for RU accounts) |
 | `OUTPOST_SSH_PUBLIC_KEY_FILE` / `..._PRIVATE_KEY_FILE` | bootstrap SSH key |
 | `OUTPOST_SUB_TOKEN` | secret path segment for the subscription URL |
-| `OUTPOST_TLS_DOMAIN` | optional domain for real TLS SNI (else self-signed) |
+| `OUTPOST_DNS_ZONE` / `CLOUDFLARE_API_TOKEN` | per-node DNS + real certs — see [docs/dns-tls.md](docs/dns-tls.md) |
+| `OUTPOST_TLS_DOMAIN` | legacy single-domain fallback (only one node can use it) |
 | `OUTPOST_LAN_GATEWAY` / `OUTPOST_LAN_DNS` | for the route-bypass probe |
 
 ## Usage
@@ -121,6 +128,10 @@ uv run outpost render --out dist-subs     # writes outpost.surge.conf + outpost.
 
 # 5. Adopt a hand-made server (no provider API)
 uv run outpost adopt --ip 1.2.3.4 --country KZ
+uv run outpost adopt --provider iphoster --ip 1.2.3.4 --country DE --password <root-pw>
+
+# 6. Give nodes their own DNS name + real cert (after setting OUTPOST_DNS_ZONE)
+uv run outpost recert          # all active nodes; or: recert <id>
 
 # Monitoring / rotation (also run by CI)
 uv run outpost probe          # reachability from inside the restricted network (needs sudo route)
@@ -149,6 +160,8 @@ URLs (replace host + token):
 
 - Surge: `https://outpost-subs.<you>.workers.dev/<SUB_TOKEN>/surge`
 - Happ:  `https://outpost-subs.<you>.workers.dev/<SUB_TOKEN>/happ`
+- Emergency public configs (tier 3, [docs/fallbacks.md](docs/fallbacks.md)):
+  `…/<SUB_TOKEN>/fallback` and `…/<SUB_TOKEN>/fallback-white`
 
 CI publishes the rendered bodies into KV (`surge` / `happ` keys) after each render.
 To publish manually:
@@ -181,13 +194,22 @@ launchctl load ~/Library/LaunchAgents/com.outpost.probe.plist
 ## CI (GitHub Actions)
 
 `.github/workflows/monitor.yml` runs every 15 min: `monitor → rotate --reap → render →
-publish to KV → commit state`. Required repository **secrets**:
+publish to KV → commit state`. `.github/workflows/fallback.yml` runs every 6 h:
+`outpost fallback` mirrors the tier-3 public configs
+(igareck/vpn-configs-for-russia) into KV (`fallback` / `fallback-white` keys); it
+needs only the Cloudflare secrets and the same `CF_OK` variable. Required repository **secrets**:
 
-`AGE_KEY`, `AEZA_API_KEY`, `ZOMRO_AUTH`, `OUTPOST_SSH_PRIVATE_KEY`,
+`AGE_KEY`, `AEZA_API_KEY`, `AEZA_PIN`, `ZOMRO_AUTH`, `HOSTKEY_API_KEY`,
+`HOSTKEY_EMAIL`, `HOSTKEY_PASSWORD`, `OUTPOST_SSH_PRIVATE_KEY`,
 `OUTPOST_SSH_PUBLIC_KEY`, `OUTPOST_TLS_DOMAIN` (optional),
 `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `KV_NAMESPACE_ID`.
 
-Set repository **variable** `CF_OK=true` once the Worker + KV exist to enable publishing.
+Rotation provisions replacements, so a provider whose credentials are missing here
+is unusable as a rotation target even when the registry lists it.
+
+Repository **variables**: `CF_OK=true` once the Worker + KV exist (enables
+publishing), `OUTPOST_DNS_ZONE` for per-node DNS + certs, and optionally
+`HOSTKEY_TRAFFIC_PLAN` / `HOSTKEY_DEPLOY_OPTIONS`.
 
 ## Security
 
