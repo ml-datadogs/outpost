@@ -15,8 +15,10 @@ import base64
 from typing import List, Optional
 from urllib.parse import quote
 
+from .config import Settings
+from .config import settings as default_settings
 from .models import HAPP_PROTOCOLS, SURGE_PROTOCOLS, Inventory, Node, Protocol
-from .server.singbox import DEFAULT_REALITY_DEST
+from .server.singbox import AI_CLEAN_DOMAIN_SUFFIXES, DEFAULT_REALITY_DEST, parse_upstream_proxy
 
 
 def _renderable(inv: Inventory) -> List[Node]:
@@ -72,17 +74,44 @@ def _surge_trojan(node: Node) -> str:
     )
 
 
-def render_surge(inv: Inventory) -> str:
-    """Surge-format proxy lines (for a Surge subscription / proxy provider URL)."""
+def render_surge(inv: Inventory, settings: Settings = default_settings) -> str:
+    """Surge-format proxy lines (for a Surge subscription / proxy provider URL).
+
+    When ``OUTPOST_AI_PROXY_URL`` is set, also emits a chained ``ai-clean-isp``
+    SOCKS5 proxy entry (using the first active node as ``underlying-proxy``) so
+    Surge can chain directly into the IPRoyal Static Residential IP even before
+    nodes are re-bootstrapped.
+    """
     lines = ["# Outpost managed proxies (Surge). Auto-generated; do not edit."]
     names: List[str] = []
+    trojan_names: List[str] = []
     for node in _renderable(inv):
-        if Protocol.HYSTERIA2 in node.protocols and Protocol.HYSTERIA2 in SURGE_PROTOCOLS:
-            lines.append(_surge_hysteria2(node))
-            names.append(f"{node.name}-hy2")
         if Protocol.TROJAN in node.protocols and Protocol.TROJAN in SURGE_PROTOCOLS:
             lines.append(_surge_trojan(node))
             names.append(f"{node.name}-trojan")
+            trojan_names.append(f"{node.name}-trojan")
+        if Protocol.HYSTERIA2 in node.protocols and Protocol.HYSTERIA2 in SURGE_PROTOCOLS:
+            lines.append(_surge_hysteria2(node))
+            names.append(f"{node.name}-hy2")
+
+    upstream = parse_upstream_proxy(settings.ai_proxy_url)
+    if upstream and upstream.scheme == "socks":
+        auth_part = ""
+        if upstream.username:
+            auth_part = f", {upstream.username}, {upstream.password or ''}"
+        under_target = trojan_names[0] if trojan_names else (names[0] if names else "")
+        under = f", underlying-proxy={under_target}" if under_target else ""
+        lines.append(
+            f"ai-clean-isp = socks5, {upstream.host}, {upstream.port}{auth_part}{under}, udp-relay=false"
+        )
+    return "\n".join(lines) + "\n"
+
+
+def render_surge_ai_ruleset() -> str:
+    """Surge DOMAIN-SUFFIX ruleset for AI & billing services (force-remote-dns)."""
+    lines = ["# Outpost AI & Billing Clean Exit Ruleset (use with force-remote-dns)"]
+    for domain in AI_CLEAN_DOMAIN_SUFFIXES:
+        lines.append(f"DOMAIN-SUFFIX,{domain}")
     return "\n".join(lines) + "\n"
 
 

@@ -16,9 +16,14 @@ PORTS="${OUTPOST_PORTS:-443,2053}"
 
 echo "[outpost] installing prerequisites"
 export DEBIAN_FRONTEND=noninteractive
+APT_OPTS=(-o Dpkg::Lock::Timeout=180 -o Acquire::Retries=3)
 if command -v apt-get >/dev/null 2>&1; then
-  apt-get update -y >/dev/null
-  apt-get install -y curl openssl ca-certificates >/dev/null
+  # Wait for cloud-init / unattended-upgrades if running on first boot.
+  if command -v cloud-init >/dev/null 2>&1; then
+    cloud-init status --wait >/dev/null 2>&1 || true
+  fi
+  apt-get "${APT_OPTS[@]}" update -y >/dev/null
+  apt-get "${APT_OPTS[@]}" install -y curl openssl ca-certificates >/dev/null
 fi
 
 if ! command -v sing-box >/dev/null 2>&1; then
@@ -30,19 +35,18 @@ mkdir -p /etc/sing-box
 
 if [ -n "$TLS_DOMAIN" ]; then
   echo "[outpost] obtaining Let's Encrypt cert for ${TLS_DOMAIN}"
-  apt-get install -y certbot >/dev/null
+  apt-get "${APT_OPTS[@]}" install -y certbot >/dev/null
   systemctl stop sing-box 2>/dev/null || true
   # HTTP-01 answers on :80, so it must be open here and at every renewal.
   if command -v ufw >/dev/null 2>&1; then
     ufw allow 80/tcp >/dev/null 2>&1 || true
   fi
-  certbot certonly --standalone -d "$TLS_DOMAIN" --non-interactive --agree-tos \
-    --register-unsafely-without-email --preferred-challenges http
-
-  # Renewal writes only to /etc/letsencrypt; without this hook the copies below go
-  # stale and TLS silently breaks ~90 days later.
-  mkdir -p /etc/letsencrypt/renewal-hooks/deploy
-  cat > /etc/letsencrypt/renewal-hooks/deploy/outpost.sh <<'HOOK'
+  if certbot certonly --standalone -d "$TLS_DOMAIN" --non-interactive --agree-tos \
+    --register-unsafely-without-email --preferred-challenges http; then
+    # Renewal writes only to /etc/letsencrypt; without this hook the copies below go
+    # stale and TLS silently breaks ~90 days later.
+    mkdir -p /etc/letsencrypt/renewal-hooks/deploy
+    cat > /etc/letsencrypt/renewal-hooks/deploy/outpost.sh <<'HOOK'
 #!/usr/bin/env bash
 set -eu
 DOMAIN_DIR="${RENEWED_LINEAGE:-}"
@@ -55,10 +59,20 @@ openssl x509 -in /etc/sing-box/cert.pem -noout -fingerprint -sha256 \
 systemctl restart sing-box 2>/dev/null || true
 systemctl restart xray 2>/dev/null || true
 HOOK
-  chmod +x /etc/letsencrypt/renewal-hooks/deploy/outpost.sh
+    chmod +x /etc/letsencrypt/renewal-hooks/deploy/outpost.sh
 
-  install -m 644 "/etc/letsencrypt/live/${TLS_DOMAIN}/fullchain.pem" /etc/sing-box/cert.pem
-  install -m 600 "/etc/letsencrypt/live/${TLS_DOMAIN}/privkey.pem" /etc/sing-box/key.pem
+    install -m 644 "/etc/letsencrypt/live/${TLS_DOMAIN}/fullchain.pem" /etc/sing-box/cert.pem
+    install -m 600 "/etc/letsencrypt/live/${TLS_DOMAIN}/privkey.pem" /etc/sing-box/key.pem
+  else
+    echo "[outpost] WARNING: certbot failed for ${TLS_DOMAIN} (DNS A record likely does not point here); falling back to self-signed cert"
+    openssl req -x509 -nodes -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \
+      -keyout /etc/sing-box/key.pem -out /etc/sing-box/cert.pem \
+      -subj "/CN=${SNI}" -days 3650 >/dev/null 2>&1
+    rm -f /etc/sing-box/letsencrypt.ok
+  fi
+  if [ -f "/etc/letsencrypt/live/${TLS_DOMAIN}/fullchain.pem" ]; then
+    touch /etc/sing-box/letsencrypt.ok
+  fi
 elif [ ! -f /etc/sing-box/cert.pem ] || [ ! -f /etc/sing-box/key.pem ]; then
   echo "[outpost] generating self-signed cert (CN=${SNI})"
   openssl req -x509 -nodes -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \

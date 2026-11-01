@@ -331,3 +331,67 @@ def test_hostkey_error_raises(monkeypatch):
         raise AssertionError("expected ProviderError")
     except ProviderError as exc:
         assert "nope" in str(exc)
+
+
+def test_vultr_discover_and_create(monkeypatch):
+    from outpost.providers.vultr import VultrProvider
+
+    prov = VultrProvider(api_key="v-key")
+    routes = {
+        ("GET", "/plans?type=vc2&per_page=500"): {
+            "plans": [
+                {
+                    "id": "vc2-1c-1gb",
+                    "vcpu_count": 1,
+                    "ram": 1024,
+                    "monthly_cost": 5.0,
+                    "locations": ["ams", "fra"],
+                }
+            ]
+        },
+        ("GET", "/os?per_page=500"): {"os": [{"id": 2284, "name": "Ubuntu 24.04 LTS x64"}]},
+        ("GET", "/regions?per_page=500"): {
+            "regions": [
+                {"id": "ams", "city": "Amsterdam", "country": "NL"},
+                {"id": "fra", "city": "Frankfurt", "country": "DE"},
+            ]
+        },
+        ("GET", "/ssh-keys"): {"ssh_keys": []},
+        ("POST", "/ssh-keys"): {"ssh_key": {"id": "ssh-111"}},
+        ("POST", "/instances"): {
+            "instance": {
+                "id": "inst-999",
+                "main_ip": "198.51.100.42",
+                "default_password": "vultr-pw",
+                "status": "active",
+                "power_status": "running",
+            }
+        },
+        ("GET", "/instances/inst-999"): {
+            "instance": {
+                "id": "inst-999",
+                "main_ip": "198.51.100.42",
+                "status": "active",
+                "power_status": "running",
+            }
+        },
+    }
+    captured = {}
+
+    def fake_request(method, path, **kwargs):
+        if path == "/instances" and method == "POST":
+            captured["create"] = kwargs.get("json")
+        return routes[(method, path)]
+
+    monkeypatch.setattr(prov, "_request", fake_request)
+    regions = prov.discover_regions()
+    assert len(regions) == 2
+    assert regions[0].code == "ams"
+    assert regions[0].country == "NL"
+
+    spec = ProvisionSpec(name="outpost-vultr", region=regions[0], ssh_public_key="ssh-ed25519 AAA test")
+    res = prov.create(spec)
+    assert res.provider_ref["instance_id"] == "inst-999"
+    assert res.ip == "198.51.100.42"
+    assert captured["create"]["sshkey_id"] == ["ssh-111"]
+    assert prov.wait_for_ip(res.provider_ref) == "198.51.100.42"

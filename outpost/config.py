@@ -56,6 +56,10 @@ class Settings:
     # Encryption
     sops_age_key_file: Optional[Path] = None
 
+    # Second-hop clean Static Residential / ISP proxy (e.g. IPRoyal socks5://user:pass@host:port)
+    ai_proxy_url: Optional[str] = None
+    vultr_api_key: Optional[str] = None
+
     # Local probe network
     lan_gateway: Optional[str] = None
     lan_dns: Optional[str] = None
@@ -85,6 +89,8 @@ class Settings:
             dns_zone=os.getenv("OUTPOST_DNS_ZONE") or None,
             dns_prefix=os.getenv("OUTPOST_DNS_PREFIX") or "exit",
             sops_age_key_file=_expand(os.getenv("SOPS_AGE_KEY_FILE")),
+            ai_proxy_url=os.getenv("OUTPOST_AI_PROXY_URL") or None,
+            vultr_api_key=os.getenv("VULTR_API_KEY") or None,
             lan_gateway=os.getenv("OUTPOST_LAN_GATEWAY") or None,
             lan_dns=os.getenv("OUTPOST_LAN_DNS") or None,
             state_dir=Path(os.getenv("OUTPOST_STATE_DIR", str(REPO_ROOT / "state"))),

@@ -8,9 +8,38 @@
 # then copy the printed product_ref / country values in here and set canary hosts.
 version: 1
 providers:
-  - name: aeza
+  - name: vultr
     policy_ok: true
-    sanctioned: true   # OFAC 2025: usable but risky; never the sole provider
+    sanctioned: false
+    notes: "Fleet v2 primary cloud (hourly VC2, clean EU/Nordic ASNs, paid via TJ card)."
+    regions:
+      - code: "ams"
+        country: NL
+        city: "Amsterdam"
+        canary: null
+        enabled: true
+        product_ref: { region: "ams", plan: "vc2-1c-1gb", os_id: "2284" }
+      - code: "fra"
+        country: DE
+        city: "Frankfurt"
+        canary: null
+        enabled: true
+        product_ref: { region: "fra", plan: "vc2-1c-1gb", os_id: "2284" }
+      - code: "sto"
+        country: SE
+        city: "Stockholm"
+        canary: null
+        enabled: true
+        product_ref: { region: "sto", plan: "vc2-1c-1gb", os_id: "2284" }
+      - code: "waw"
+        country: PL
+        city: "Warsaw"
+        canary: null
+        enabled: true
+        product_ref: { region: "waw", plan: "vc2-1c-1gb", os_id: "2284" }
+
+  - name: aeza
+    policy_ok: false   # Fleet v1 retired: OFAC sanctioned + heavily blocked subnets
     notes: "RU-friendly billing + hourly. Pin to NON-RU regions (DE/NL/FI). Sanctioned -> diversify."
     regions:
       # Example shape - replace product_id/canary with values from `outpost discover`.

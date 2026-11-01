@@ -18,6 +18,8 @@ jobs:
     env:
       # Rotation provisions replacements, so CI needs every provider's credentials
       # (a missing one makes that provider unusable as a rotation target).
+      VULTR_API_KEY: ${{ secrets.VULTR_API_KEY }}
+      OUTPOST_AI_PROXY_URL: ${{ secrets.OUTPOST_AI_PROXY_URL }}
       AEZA_API_KEY: ${{ secrets.AEZA_API_KEY }}
       AEZA_PIN: ${{ secrets.AEZA_PIN }}
       ZOMRO_AUTH: ${{ secrets.ZOMRO_AUTH }}

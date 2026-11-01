@@ -7,6 +7,7 @@ encryption a one-step upgrade (install sops + age, add a .sops.yaml rule).
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import tempfile
@@ -15,6 +16,22 @@ from pathlib import Path
 
 class SopsError(RuntimeError):
     pass
+
+
+def _sops_env() -> dict:
+    env = dict(os.environ)
+    default_outpost_key = Path.home() / ".config" / "sops" / "age" / "outpost.key"
+    raw = env.get("SOPS_AGE_KEY_FILE")
+    if raw:
+        expanded = Path(os.path.expanduser(raw))
+        # Prefer ~/.config/sops/age/outpost.key when global shell points to generic keys.txt
+        if expanded.name == "keys.txt" and default_outpost_key.exists():
+            env["SOPS_AGE_KEY_FILE"] = str(default_outpost_key)
+        else:
+            env["SOPS_AGE_KEY_FILE"] = str(expanded)
+    elif default_outpost_key.exists():
+        env["SOPS_AGE_KEY_FILE"] = str(default_outpost_key)
+    return env
 
 
 def sops_available() -> bool:
@@ -36,6 +53,7 @@ def decrypt(path: Path) -> str:
         ["sops", "--decrypt", str(path)],
         capture_output=True,
         text=True,
+        env=_sops_env(),
     )
     if proc.returncode != 0:
         raise SopsError(f"sops decrypt failed: {proc.stderr.strip()}")
@@ -74,6 +92,7 @@ def encrypt_to(path: Path, plaintext_yaml: str) -> None:
             ],
             capture_output=True,
             text=True,
+            env=_sops_env(),
         )
         if proc.returncode != 0:
             raise SopsError(f"sops encrypt failed: {proc.stderr.strip()}")

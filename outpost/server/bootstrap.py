@@ -144,6 +144,12 @@ def bootstrap_node(
         ).strip()
         if len(pin) == 64 and all(c in "0123456789abcdef" for c in pin):
             node.tls_cert_sha256 = pin
+        if node.tls_domain:
+            le_ok = _run(client, "test -f /etc/sing-box/letsencrypt.ok && echo yes || echo no").strip()
+            if le_ok != "yes":
+                node.insecure = True
+                node.tls_domain = None
+                node.sni = "www.bing.com"
     finally:
         client.close()
 

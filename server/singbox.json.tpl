@@ -38,6 +38,25 @@
     }
   ],
   "outbounds": [
-    { "type": "direct", "tag": "direct" }
-  ]
+    { "type": "direct", "tag": "direct" }{% if ai_proxy %},
+    {
+      "type": {{ ai_proxy.scheme | tojson }},
+      "tag": "ai-clean",
+      "server": {{ ai_proxy.host | tojson }},
+      "server_port": {{ ai_proxy.port }}{% if ai_proxy.username %},
+      "username": {{ ai_proxy.username | tojson }}{% endif %}{% if ai_proxy.password %},
+      "password": {{ ai_proxy.password | tojson }}{% endif %}
+    }
+{% endif %}
+  ]{% if ai_proxy %},
+  "route": {
+    "final": "direct",
+    "rules": [
+      {
+        "domain_suffix": {{ ai_domains | tojson }},
+        "outbound": "ai-clean"
+      }
+    ]
+  }
+{% endif %}
 }

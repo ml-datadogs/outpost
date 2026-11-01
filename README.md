@@ -1,10 +1,14 @@
 # Outpost
 
 Automated proxy fleet for restricted networks. Outpost provisions fresh VPS proxies
-on RU-friendly hosts (**Zomro** + **Aeza**; Hostkey parked, non-RU regions), bootstraps a
-[`sing-box`](https://sing-box.sagernet.org/) stack over SSH, and renders **one
+(**Vultr** primary; **Zomro** / adopt-tier **iphoster**; Aeza + Hostkey parked), bootstraps a
+[`sing-box`](https://sing-box.sagernet.org/) + Xray stack over SSH, and renders **one
 token-gated subscription URL** that auto-updates in both **Surge** and **Happ** — with
 CI + on-Mac monitoring that **auto-rotates blocked nodes**.
+
+Optional second hop: set `OUTPOST_AI_PROXY_URL` (Static Residential / ISP SOCKS5) so
+AI & billing domains exit via a clean residential ASN — see
+[docs/ai-clean-network.md](docs/ai-clean-network.md).
 
 > Goal: a working exit **outside** Russian jurisdiction/RKN, reachable from inside it,
 > on providers that accept Russian payment.

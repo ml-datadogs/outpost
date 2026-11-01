@@ -35,6 +35,36 @@
 {% endfor %}
   ],
   "outbounds": [
-    { "protocol": "freedom", "tag": "direct" }
-  ]
+    { "protocol": "freedom", "tag": "direct" }{% if ai_proxy %},
+    {
+      "protocol": {{ ai_proxy.scheme | tojson }},
+      "tag": "ai-clean",
+      "settings": {
+        "servers": [
+          {
+            "address": {{ ai_proxy.host | tojson }},
+            "port": {{ ai_proxy.port }}{% if ai_proxy.username %},
+            "users": [
+              {
+                "user": {{ ai_proxy.username | tojson }},
+                "pass": {{ (ai_proxy.password or "") | tojson }}
+              }
+            ]{% endif %}
+          }
+        ]
+      }
+    }
+{% endif %}
+  ]{% if ai_proxy %},
+  "routing": {
+    "domainStrategy": "AsIs",
+    "rules": [
+      {
+        "type": "field",
+        "domain": {{ ai_domains | tojson }},
+        "outboundTag": "ai-clean"
+      }
+    ]
+  }
+{% endif %}
 }

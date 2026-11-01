@@ -18,6 +18,12 @@ def get_provider(name: str, settings: Settings = default_settings) -> BaseProvid
             f"{name} has no provisioning API; order the VPS manually, "
             f"then run `outpost adopt --provider {name} --ip <ip> --country <cc>`"
         )
+    if name == "vultr":
+        from .vultr import VultrProvider
+
+        if not settings.vultr_api_key:
+            raise ProviderError("VULTR_API_KEY is not set")
+        return VultrProvider(api_key=settings.vultr_api_key)
     if name == "aeza":
         from .aeza import AezaProvider
 

@@ -86,3 +86,30 @@ def test_ru_nodes_excluded_from_render(inventory, ru_node):
     assert ru_node.ip not in out
     links = render_happ_links(inventory)
     assert all(ru_node.ip not in link for link in links)
+
+
+def test_singbox_and_xray_render_ai_clean_upstream(node):
+    import json
+
+    from outpost.config import Settings
+    from outpost.server.singbox import render_singbox_config
+    from outpost.server.xray import render_xray_config
+
+    cfg = Settings(ai_proxy_url="socks5://ipuser:ippass@geo.iproyal.com:12324")
+    sb = json.loads(render_singbox_config(node, settings=cfg))
+    out_tags = {o["tag"]: o for o in sb["outbounds"]}
+    assert "ai-clean" in out_tags
+    assert out_tags["ai-clean"]["type"] == "socks"
+    assert out_tags["ai-clean"]["server"] == "geo.iproyal.com"
+    assert out_tags["ai-clean"]["server_port"] == 12324
+    assert out_tags["ai-clean"]["username"] == "ipuser"
+    assert out_tags["ai-clean"]["password"] == "ippass"
+    assert sb["route"]["rules"][0]["outbound"] == "ai-clean"
+    assert "anthropic.com" in sb["route"]["rules"][0]["domain_suffix"]
+
+    xr = json.loads(render_xray_config(node, settings=cfg))
+    xr_tags = {o["tag"]: o for o in xr["outbounds"]}
+    assert "ai-clean" in xr_tags
+    assert xr_tags["ai-clean"]["protocol"] == "socks"
+    assert xr["routing"]["rules"][0]["outboundTag"] == "ai-clean"
+    assert "domain:anthropic.com" in xr["routing"]["rules"][0]["domain"]

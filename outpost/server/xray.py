@@ -9,7 +9,7 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined
 from ..config import Settings
 from ..config import settings as default_settings
 from ..models import Node
-from .singbox import DEFAULT_REALITY_DEST
+from .singbox import AI_CLEAN_DOMAIN_SUFFIXES, DEFAULT_REALITY_DEST, parse_upstream_proxy
 
 
 def render_xray_config(
@@ -28,12 +28,15 @@ def render_xray_config(
     env.filters["tojson"] = lambda v: json.dumps(v)
     template = env.get_template("xray.json.tpl")
 
+    upstream = parse_upstream_proxy(settings.ai_proxy_url)
     rendered = template.render(
         reality_ports=sorted({node.ports.vless_reality, 443}),
         reality_uuid=node.secrets.reality_uuid,
         reality_private_key=node.secrets.reality_private_key,
         reality_short_id=node.secrets.reality_short_id,
         reality_dest=reality_dest,
+        ai_proxy=upstream,
+        ai_domains=[f"domain:{d}" for d in AI_CLEAN_DOMAIN_SUFFIXES],
     )
     json.loads(rendered)
     return rendered
