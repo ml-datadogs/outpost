@@ -4,7 +4,7 @@ Automated proxy fleet for restricted networks. Outpost provisions fresh VPS prox
 (**Vultr** primary; **Zomro** / adopt-tier **iphoster**; Aeza + Hostkey parked), bootstraps a
 [`sing-box`](https://sing-box.sagernet.org/) + Xray stack over SSH, and renders **one
 token-gated subscription URL** that auto-updates in both **Surge** and **Happ** — with
-CI + on-Mac monitoring that **auto-rotates blocked nodes**.
+CI publishes subscriptions; rotate blocked nodes **locally** when needed.
 
 Optional second hop: set `OUTPOST_AI_PROXY_URL` (Static Residential / ISP SOCKS5) so
 AI & billing domains exit via a clean residential ASN — see
@@ -63,15 +63,14 @@ To bring it back: set `policy_ok: true`, restore the `HOSTKEY_*` credentials in
 ## Architecture
 
 ```
- local CLI (Mac) --provision/rotate-->  Aeza/Zomro/Hostkey API  --> VPS (sing-box) via SSH
-        |                                                          ^
-        v                                                          |
- state/inventory.enc.yaml  --render-->  Surge sub + Happ sub       |
-        ^                                   |                       |
-   Mac launchd probe (route-bypass) --------+                       |
-        |  reachability scores                                      |
-        v                                                           |
- GitHub Actions (every 15m): monitor -> rotate -> render -> Cloudflare KV
+ local CLI (Mac) --provision/rotate-->  Vultr/Zomro/… API  --> VPS (sing-box) via SSH
+        |                                                     ^
+        v                                                     |
+ state/inventory.enc.yaml  --render-->  Surge sub + Happ sub  |
+        ^                              |                      |
+   Mac launchd probe ------------------+                      |
+                                       v                      |
+              GitHub Actions: render -> Cloudflare KV (no inventory commits)
                                                           |
                                           Surge / Happ <--+ (token-gated Worker)
 ```
@@ -207,21 +206,26 @@ launchctl load ~/Library/LaunchAgents/com.outpost.probe.plist
 
 ## CI (GitHub Actions)
 
-`.github/workflows/monitor.yml` runs every 15 min: `monitor → rotate --reap → render →
-publish to KV → commit state`. `.github/workflows/fallback.yml` runs every 6 h:
-`outpost fallback` mirrors the tier-3 public configs
-(igareck/vpn-configs-for-russia) into KV (`fallback` / `fallback-white` keys); it
-needs only the Cloudflare secrets and the same `CF_OK` variable. Required repository **secrets**:
+`.github/workflows/monitor.yml` (`publish-subscriptions`) renders from the committed
+inventory and publishes to Cloudflare KV. It does **not** mutate or commit
+`state/` (no more `monitor: update fleet state` spam). Run monitor/rotate on a
+Mac when you want inventory changes:
 
-`AGE_KEY`, `AEZA_API_KEY`, `AEZA_PIN`, `ZOMRO_AUTH`, `OUTPOST_SSH_PRIVATE_KEY`,
-`OUTPOST_SSH_PUBLIC_KEY`, `OUTPOST_TLS_DOMAIN` (optional),
-`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `KV_NAMESPACE_ID`.
+```bash
+uv run outpost monitor
+uv run outpost rotate --reap
+# then commit state/inventory.enc.yaml yourself if it changed
+```
 
-Rotation provisions replacements, so a provider whose credentials are missing here
-is unusable as a rotation target even when the registry lists it.
+`.github/workflows/fallback.yml` runs every 6 h: `outpost fallback` mirrors the
+tier-3 public configs (igareck/vpn-configs-for-russia) into KV (`fallback` /
+`fallback-white` keys). Required repository **secrets**:
+
+`AGE_KEY`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `KV_NAMESPACE_ID`,
+and optionally `OUTPOST_AI_PROXY_URL` (for AI-clean lines in the Surge render).
 
 Repository **variables**: `CF_OK=true` once the Worker + KV exist (enables
-publishing) and `OUTPOST_DNS_ZONE` for per-node DNS + certs.
+publishing).
 
 ## Security
 
@@ -237,8 +241,8 @@ outpost/            Python package (models, providers, render, orchestrator, mon
 server/             singbox.json.tpl + bootstrap.sh
 worker/             Cloudflare Worker (token-gated subscription)
 agent/              on-Mac launchd reachability probe
-state/              registry.yaml (committed) + inventory (managed)
-.github/workflows/  monitor + rotate schedule
+state/              registry.yaml + inventory.enc.yaml (manual commits only)
+.github/workflows/  publish-subscriptions + fallback mirror
 tests/              pytest suite
 ```
 
