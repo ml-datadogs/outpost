@@ -1,5 +1,8 @@
 # Outpost
 
+Локальная конфигурация Surge хранится в [surge/](surge/README.md): читаемая версия
+без секретов и точный зашифрованный снимок для восстановления.
+
 Automated proxy fleet for restricted networks. Outpost provisions fresh VPS proxies
 (**Vultr** primary; **Zomro** / adopt-tier **iphoster**; Aeza + Hostkey parked), bootstraps a
 [`sing-box`](https://sing-box.sagernet.org/) + Xray stack over SSH, and renders **one
