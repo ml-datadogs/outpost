@@ -53,7 +53,7 @@ purge_legacy() {
         green "Moved ~/.claude.json (contained old userID / anonymousId / oauthAccount)"
     fi
 
-    for item in ".credentials.json" "statsig" "projects" "todos"; do
+    for item in ".credentials.json" "statsig" "projects" "todos" "telemetry" "backups" "session-env" "sessions" "history.jsonl" "mcp-needs-auth-cache.json"; do
         if [[ -e "${HOME}/.claude/${item}" ]]; then
             mv "${HOME}/.claude/${item}" "${backup_dir}/${item}"
             green "Moved ~/.claude/${item}"
