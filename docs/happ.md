@@ -20,6 +20,12 @@ HTTPS route points to the Cilium Gateway in `k8s-prod`. The Node service runs
 the same token check and Happ response as the Worker. Cloudflare DNS resolves
 the hostname to the cluster's existing load balancer.
 
+The deployment uses a pinned Node base image and mounts the server files from
+the [infrastructure GitOps repository](https://github.com/infra-incubator/k8s/tree/main/cluster/infrastructure/outpost).
+When changing the server, update the GitOps copy of `worker/server.mjs`,
+`worker/src/index.js`, and `worker/package.json` together. The ConfigMap hash
+rolls the pod when the mounted code changes.
+
 To refresh the feed, set `OUTPOST_HAPP_SOCKS_URL` to the current authenticated
 `socks5://user:password@host:port` URL from the working Surge entry. Percent-encode
 special characters in the username and password. With the inventory decryption
