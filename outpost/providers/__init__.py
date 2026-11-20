@@ -8,7 +8,7 @@ from .base import BaseProvider, ProviderError, ProvisionResult, ProvisionSpec
 
 # Providers with no provisioning API: order in the panel, then `outpost adopt --provider <name>`.
 # Never auto-provisioned, never API-destroyed (see rotate.reap_retired / cli.destroy).
-MANUAL_PROVIDERS = {"byo", "iphoster"}
+MANUAL_PROVIDERS = {"byo", "iphoster", "mivocloud", "profitserver", "freakhosting"}
 
 
 def get_provider(name: str, settings: Settings = default_settings) -> BaseProvider:

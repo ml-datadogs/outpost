@@ -134,6 +134,7 @@ def adopt_node(
     root_password: Optional[str] = None,
     provider_ref: Optional[dict] = None,
     save=None,
+    pilot: bool = False,
 ) -> Node:
     """Adopt a hand-made server (BYO): IP + SSH access (key or password), install sing-box.
 
@@ -154,6 +155,8 @@ def adopt_node(
         secrets=generate_node_secrets(),
         tags=["byo" if provider_name == "byo" else "adopted"],
     )
+    if pilot or provider_name in {"mivocloud", "profitserver", "freakhosting"}:
+        node.tags.append("happ-pilot")
     node.status = NodeStatus.PROVISIONING
     inventory.upsert(node)
     if save:

@@ -9,6 +9,7 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined
 from ..config import Settings
 from ..config import settings as default_settings
 from ..models import Node
+from .pilot import pilot_inbounds
 from .singbox import AI_CLEAN_DOMAIN_SUFFIXES, DEFAULT_REALITY_DEST, parse_upstream_proxy
 
 
@@ -38,5 +39,10 @@ def render_xray_config(
         ai_proxy=upstream,
         ai_domains=[f"domain:{d}" for d in AI_CLEAN_DOMAIN_SUFFIXES],
     )
+    if "happ-pilot" in node.tags:
+        config = json.loads(rendered)
+        config["log"] = {"loglevel": "warning", "access": "none"}
+        config["inbounds"].extend(pilot_inbounds(node))
+        return json.dumps(config, indent=2)
     json.loads(rendered)
     return rendered

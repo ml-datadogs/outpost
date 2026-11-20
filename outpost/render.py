@@ -12,12 +12,14 @@ Real cert (OUTPOST_TLS_DOMAIN): omit pcs/insecure entirely.
 from __future__ import annotations
 
 import base64
+import hashlib
 from typing import List, Optional
 from urllib.parse import quote, unquote, urlsplit
 
 from .config import Settings
 from .config import settings as default_settings
-from .models import HAPP_PROTOCOLS, SURGE_PROTOCOLS, Inventory, Node, Protocol
+from .models import SURGE_PROTOCOLS, Inventory, Node, Protocol
+from .server.pilot import GECKO_PACKET_SIZE, XHTTP_PATH
 from .server.singbox import AI_CLEAN_DOMAIN_SUFFIXES, DEFAULT_REALITY_DEST, parse_upstream_proxy
 
 
@@ -120,19 +122,22 @@ def render_surge_ai_ruleset() -> str:
 
 
 # --------------------------------------------------------------------------- Happ (share links)
-def _link_hysteria2(node: Node) -> str:
+def _link_hysteria2(node: Node, gecko: bool = False) -> str:
     s = _secrets(node)
     sni = node.tls_domain or node.sni
     params: dict[str, str] = {"sni": sni}
     if s.hysteria2_obfs_password:
-        params["obfs"] = "salamander"
+        params["obfs"] = "gecko" if gecko else "salamander"
+        if gecko:
+            params["obfs-packet-size"] = GECKO_PACKET_SIZE
         params["obfs-password"] = s.hysteria2_obfs_password
     _happ_cert_pin(params, node)
     query = _link_query(**params)
     auth = quote(s.hysteria2_password, safe="")
     suffix = f"/?{query}" if query else "/"
-    fragment = _happ_fragment(node, f"{node.name}-hy2")
-    return f"hysteria2://{auth}@{_link_host(node)}:{node.ports.hysteria2}{suffix}#{fragment}"
+    fragment = _happ_fragment(node, node.name + ("-gecko" if gecko else "-hy2"))
+    port = node.ports.gecko if gecko else node.ports.hysteria2
+    return f"hysteria2://{auth}@{_link_host(node)}:{port}{suffix}#{fragment}"
 
 
 def _link_trojan(node: Node) -> str:
@@ -170,17 +175,46 @@ def _link_reality(node: Node, reality_dest: str = DEFAULT_REALITY_DEST, port: Op
     return f"vless://{s.reality_uuid}@{node.ip}:{listen_port}?{query}#{_happ_fragment(node, label)}"
 
 
+def profile_key(link: str, ip: str, country: str) -> str:
+    identity = "\n".join((ip, country.upper(), link.partition("#")[0]))
+    return hashlib.sha256(identity.encode()).hexdigest()
+
+
+def happ_profiles(node: Node, reality_dest: str = DEFAULT_REALITY_DEST) -> dict[str, str]:
+    profiles = {}
+    if Protocol.HYSTERIA2 in node.protocols:
+        profiles["hy2"] = _link_hysteria2(node)
+    if Protocol.TROJAN in node.protocols:
+        profiles["trojan"] = _link_trojan(node)
+    if Protocol.VLESS_REALITY in node.protocols:
+        for port in dict.fromkeys([node.ports.vless_reality, 443]):
+            profiles[f"reality-{port}"] = _link_reality(node, reality_dest, port)
+    if "happ-pilot" in node.tags:
+        params = {
+            "encryption": "none",
+            "type": "xhttp",
+            "security": "tls",
+            "path": XHTTP_PATH,
+            "mode": "auto",
+            "alpn": "h2",
+            "sni": node.tls_domain or node.sni,
+        }
+        _happ_cert_pin(params, node)
+        profiles["xhttp"] = (
+            f"vless://{_secrets(node).reality_uuid}@{_link_host(node)}:{node.ports.xhttp}"
+            f"?{_link_query(**params)}#{_happ_fragment(node, node.name + '-xhttp')}"
+        )
+        profiles["gecko"] = _link_hysteria2(node, gecko=True)
+    return profiles
+
+
 def render_happ_links(inv: Inventory, reality_dest: str = DEFAULT_REALITY_DEST) -> List[str]:
-    links: List[str] = []
+    links = []
     for node in _renderable(inv):
-        if Protocol.HYSTERIA2 in node.protocols:
-            links.append(_link_hysteria2(node))
-        if Protocol.TROJAN in node.protocols:
-            links.append(_link_trojan(node))
-        if Protocol.VLESS_REALITY in node.protocols and Protocol.VLESS_REALITY in HAPP_PROTOCOLS:
-            links.append(_link_reality(node, reality_dest))
-            if node.ports.vless_reality != 443:
-                links.append(_link_reality(node, reality_dest, port=443))
+        for link in happ_profiles(node, reality_dest).values():
+            key = profile_key(link, node.ip or "", node.country)
+            if "happ-pilot" not in node.tags or key in node.happ_approved:
+                links.append(link)
     return links
 
 
@@ -211,10 +245,18 @@ def _happ_socks_link(proxy_url: str) -> str:
 
 
 def render_happ(
-    inv: Inventory, reality_dest: str = DEFAULT_REALITY_DEST, *, socks_url: Optional[str] = None
+    inv: Inventory,
+    reality_dest: str = DEFAULT_REALITY_DEST,
+    *,
+    socks_url: Optional[str] = None,
+    control_link: Optional[str] = None,
 ) -> str:
     """Happ universal subscription: base64 of newline-joined share links."""
     links = render_happ_links(inv, reality_dest)
+    if control_link and control_link not in links:
+        if not control_link.startswith("vless://") or any(c.isspace() for c in control_link):
+            raise ValueError("Invalid Hostkey control link")
+        links.insert(0, control_link)
     if socks_url:
         links.insert(0, _happ_socks_link(socks_url))
     body = "\n".join(links)

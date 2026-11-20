@@ -11,32 +11,44 @@ providers:
   - name: vultr
     policy_ok: true
     sanctioned: false
-    notes: "Fleet v2 primary cloud (hourly VC2, clean EU/Nordic ASNs, paid via TJ card)."
+    notes: "Pilot paused: HTTPS bodies stalled near 16 KB on all four endpoints on 2026-11-20."
     regions:
       - code: "ams"
         country: NL
         city: "Amsterdam"
         canary: null
-        enabled: true
+        enabled: false
         product_ref: { region: "ams", plan: "vc2-1c-1gb", os_id: "2284" }
       - code: "fra"
         country: DE
         city: "Frankfurt"
         canary: null
-        enabled: true
+        enabled: false
         product_ref: { region: "fra", plan: "vc2-1c-1gb", os_id: "2284" }
       - code: "sto"
         country: SE
         city: "Stockholm"
         canary: null
-        enabled: true
+        enabled: false
         product_ref: { region: "sto", plan: "vc2-1c-1gb", os_id: "2284" }
       - code: "waw"
         country: PL
         city: "Warsaw"
         canary: null
-        enabled: true
+        enabled: false
         product_ref: { region: "waw", plan: "vc2-1c-1gb", os_id: "2284" }
+
+  # Pilot candidates are manually ordered and adopted after subnet verification.
+  - name: mivocloud
+    regions:
+      - {code: chisinau, country: MD, city: Chisinau, enabled: false}
+      - {code: iasi, country: RO, city: Iasi, enabled: false}
+  - name: profitserver
+    regions:
+      - {code: pl, country: PL, enabled: false}
+  - name: freakhosting
+    regions:
+      - {code: pl, country: PL, enabled: false}
 
   - name: aeza
     policy_ok: false   # Fleet v1 retired: OFAC sanctioned + heavily blocked subnets

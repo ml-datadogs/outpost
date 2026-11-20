@@ -51,7 +51,7 @@ def main() -> int:
 
     # Node reachability (trojan TCP port is a good general signal).
     for node in inv.nodes:
-        if not node.ip:
+        if not node.ip or "happ-pilot" in node.tags:
             continue
         res = isp_probe(node.ip, node.ports.trojan, gateway=args.gateway, dns=args.dns)
         node.health.reachable = res.ok

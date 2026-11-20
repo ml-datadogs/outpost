@@ -60,6 +60,8 @@ jobs:
           KV_NAMESPACE_ID: ${{ secrets.KV_NAMESPACE_ID }}
         run: |
           npx --yes wrangler kv key put --namespace-id "$KV_NAMESPACE_ID" surge --path dist-subs/outpost.surge.conf
-          npx --yes wrangler kv key put --namespace-id "$KV_NAMESPACE_ID" happ  --path dist-subs/outpost.happ.txt
+          if test -s dist-subs/outpost.happ.txt; then
+            npx --yes wrangler kv key put --namespace-id "$KV_NAMESPACE_ID" happ --path dist-subs/outpost.happ.txt
+          fi
           # Note: set repo variable CF_OK=true once the Worker + KV namespace exist
           # so this publish step runs.

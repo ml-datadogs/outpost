@@ -101,11 +101,12 @@ def bootstrap_node(
         node.sni = tls_domain
         node.insecure = False
 
+    if node.secrets and not node.secrets.hysteria2_obfs_password:
+        node.secrets.hysteria2_obfs_password = generate_password()
+
     config_json = render_singbox_config(node, settings=settings, reality_dest=reality_dest)
     xray_json = render_xray_config(node, settings=settings, reality_dest=reality_dest)
     script = (settings.server_dir / "bootstrap.sh").read_text()
-    if node.secrets and not node.secrets.hysteria2_obfs_password:
-        node.secrets.hysteria2_obfs_password = generate_password()
 
     wait_for_ssh(node.ip, node.ssh_port)
     client = _connect(node, settings, root_password)
@@ -124,15 +125,26 @@ def bootstrap_node(
 
         _put(client, config_json, REMOTE_CONFIG, mode=0o600)
         _put(client, xray_json, REMOTE_XRAY_CONFIG, mode=0o600)
+        if "happ-pilot" in node.tags:
+            _put(
+                client,
+                (settings.server_dir / "pilot-health.sh").read_text(),
+                "/tmp/outpost-pilot-health.sh",
+                mode=0o700,
+            )
         _put(client, script, REMOTE_SCRIPT, mode=0o700)
 
         ports = f"{node.ports.hysteria2},{node.ports.trojan},{node.ports.vless_reality}"
+        if "happ-pilot" in node.tags:
+            ports += f",443,{node.ports.xhttp},{node.ports.gecko}"
         sni = node.tls_domain or node.sni
         env = (
             f"OUTPOST_SNI={_shell_quote(sni)} "
             f"OUTPOST_PORTS={_shell_quote(ports)} "
             f"OUTPOST_XRAY_CONFIG={_shell_quote(REMOTE_XRAY_CONFIG)}"
         )
+        if "happ-pilot" in node.tags:
+            env += " OUTPOST_PILOT=1"
         if node.tls_domain:
             env += f" OUTPOST_TLS_DOMAIN={_shell_quote(node.tls_domain)}"
         _run(client, f"{env} bash {REMOTE_SCRIPT} {REMOTE_CONFIG}")

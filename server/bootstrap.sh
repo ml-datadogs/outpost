@@ -56,11 +56,16 @@ install -m 600 "${DOMAIN_DIR}/privkey.pem"  /etc/sing-box/key.pem
 openssl x509 -in /etc/sing-box/cert.pem -noout -fingerprint -sha256 \
   | sed 's/sha256 Fingerprint=//I; s/://g' | tr '[:upper:]' '[:lower:]' \
   > /etc/sing-box/cert.sha256
+if [ -d /etc/outpost-tls ]; then
+  install -m 644 /etc/sing-box/cert.pem /etc/outpost-tls/cert.pem
+  install -m 640 -g outpost-tls /etc/sing-box/key.pem /etc/outpost-tls/key.pem
+fi
 systemctl restart sing-box 2>/dev/null || true
 systemctl restart xray 2>/dev/null || true
 HOOK
     chmod +x /etc/letsencrypt/renewal-hooks/deploy/outpost.sh
 
+    touch /etc/sing-box/letsencrypt.ok
     install -m 644 "/etc/letsencrypt/live/${TLS_DOMAIN}/fullchain.pem" /etc/sing-box/cert.pem
     install -m 600 "/etc/letsencrypt/live/${TLS_DOMAIN}/privkey.pem" /etc/sing-box/key.pem
   else
@@ -69,9 +74,6 @@ HOOK
       -keyout /etc/sing-box/key.pem -out /etc/sing-box/cert.pem \
       -subj "/CN=${SNI}" -days 3650 >/dev/null 2>&1
     rm -f /etc/sing-box/letsencrypt.ok
-  fi
-  if [ -f "/etc/letsencrypt/live/${TLS_DOMAIN}/fullchain.pem" ]; then
-    touch /etc/sing-box/letsencrypt.ok
   fi
 elif [ ! -f /etc/sing-box/cert.pem ] || [ ! -f /etc/sing-box/key.pem ]; then
   echo "[outpost] generating self-signed cert (CN=${SNI})"
@@ -86,8 +88,8 @@ openssl x509 -in /etc/sing-box/cert.pem -noout -fingerprint -sha256 \
   > /etc/sing-box/cert.sha256
 
 echo "[outpost] installing config"
-cp "$CONFIG_SRC" /etc/sing-box/config.json
-sing-box check -c /etc/sing-box/config.json
+sing-box check -c "$CONFIG_SRC"
+install -m 600 "$CONFIG_SRC" /etc/sing-box/config.json
 
 echo "[outpost] enabling service"
 systemctl enable sing-box >/dev/null 2>&1 || true
@@ -98,10 +100,26 @@ if [ -n "$XRAY_CONFIG_SRC" ] && [ -f "$XRAY_CONFIG_SRC" ]; then
   # someone else's build (e.g. a leftover Amnezia install) whose Reality behaviour we
   # have not validated. The installer is idempotent and no-ops when already current.
   echo "[outpost] installing/updating xray-core (Happ Reality)"
-  bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
+  xray_install_args=(install)
+  if [ "${OUTPOST_PILOT:-}" = 1 ]; then
+    xray_install_args+=(--version v26.11.9)
+  fi
+  installer=$(curl -fsSL https://raw.githubusercontent.com/XTLS/Xray-install/main/install-release.sh)
+  bash -c "$installer" @ "${xray_install_args[@]}"
   xray version | head -n 1
+  if [ "${OUTPOST_PILOT:-}" = 1 ]; then
+    getent group outpost-tls >/dev/null || groupadd --system outpost-tls
+    install -d -m 750 -g outpost-tls /etc/outpost-tls
+    install -m 644 /etc/sing-box/cert.pem /etc/outpost-tls/cert.pem
+    install -m 640 -g outpost-tls /etc/sing-box/key.pem /etc/outpost-tls/key.pem
+    install -d /etc/systemd/system/xray.service.d
+    printf '[Service]\nSupplementaryGroups=outpost-tls\nRestart=on-failure\n' > /etc/systemd/system/xray.service.d/outpost.conf
+    systemctl daemon-reload
+  fi
   mkdir -p /usr/local/etc/xray
-  install -m 644 "$XRAY_CONFIG_SRC" /usr/local/etc/xray/config.json
+  xray run -test -config "$XRAY_CONFIG_SRC"
+  xray_user=$(systemctl show -p User --value xray)
+  install -m 400 -o "${xray_user:-root}" "$XRAY_CONFIG_SRC" /usr/local/etc/xray/config.json
   xray run -test -config /usr/local/etc/xray/config.json
   systemctl enable xray >/dev/null 2>&1 || true
   systemctl restart xray
@@ -114,6 +132,29 @@ if command -v ufw >/dev/null 2>&1; then
     ufw allow "${p}/tcp" >/dev/null 2>&1 || true
     ufw allow "${p}/udp" >/dev/null 2>&1 || true
   done
+fi
+
+if [ "${OUTPOST_PILOT:-}" = 1 ]; then
+  install -m 700 /tmp/outpost-pilot-health.sh /usr/local/sbin/outpost-pilot-health
+  cat > /etc/systemd/system/outpost-pilot-health.service <<'UNIT'
+[Unit]
+Description=Record Outpost VPS health counters
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/outpost-pilot-health
+UNIT
+  cat > /etc/systemd/system/outpost-pilot-health.timer <<'UNIT'
+[Unit]
+Description=Daily Outpost VPS health snapshot
+[Timer]
+OnCalendar=daily
+Persistent=true
+[Install]
+WantedBy=timers.target
+UNIT
+  systemctl daemon-reload
+  systemctl enable --now outpost-pilot-health.timer
+  systemctl start outpost-pilot-health.service
 fi
 
 echo "[outpost] done"

@@ -21,7 +21,7 @@ DNS, and publish separate token-gated subscriptions for **Surge** and **Happ**.
   fallback bundles. Both skip Cloudflare KV writes because `CF_OK` is unset. The
   checked-in Worker config has a placeholder namespace ID. Any earlier Worker
   deployment is unverified.
-- **Monitoring:** The Mac launchd probe is unloaded. The CLI remains available
+- **Monitoring:** The Mac probe runs on demand. The CLI remains available
   for local monitoring, provisioning, and rotation.
 
 Optional second hop: set `OUTPOST_AI_PROXY_URL` (Static Residential / ISP SOCKS5) so
@@ -58,8 +58,7 @@ A `(provider, region)` may host an exit only if **all three** hold:
 Hetzner is kept in the registry but excluded on gate 3 (it bans/suspends RU/CIS
 accounts). DigitalOcean is avoided (range-blocked). See `state/registry.yaml`.
 
-**Manual (adopt-tier) providers:** hosts with RU-friendly billing but **no
-provisioning API** — currently **iphoster** — are registered too, but only for
+**Manual (adopt-tier) providers:** IPhoster, MivoCloud, ProfitServer, and FreakHosting are registered for
 hand-ordered boxes brought in via `outpost adopt`; rotation never auto-provisions
 or API-destroys them. Public tested configs (igareck/vpn-configs-for-russia) are
 the emergency tier below that — see [docs/fallbacks.md](docs/fallbacks.md).
@@ -86,7 +85,7 @@ To bring it back: set `policy_ok: true`, restore the `HOSTKEY_*` credentials in
         v                                                     |
  state/inventory.enc.yaml  --render-->  Surge sub + Happ sub  |
         ^                              |                      |
-   Mac launchd probe ------------------+                      |
+   Manual Mac probe ------------------+                      |
                                        v                      |
               GitHub Actions: render -> Cloudflare KV (no inventory commits)
                                                           |
@@ -146,8 +145,8 @@ export SOPS_AGE_KEY_FILE=~/.config/sops/age/outpost.key
 uv run outpost discover --provider vultr --what regions
 uv run outpost discover --provider vultr --what products
 
-# 2. Provision an exit (picks an eligible non-RU region automatically)
-uv run outpost provision --provider vultr --region ams
+# 2. Bootstrap a manually ordered pilot VPS (use its assigned address)
+uv run outpost adopt --pilot --provider hostkey --country NL --ip <IPv4>
 
 # 3. See the fleet
 uv run outpost list
@@ -211,17 +210,13 @@ Add subscription → paste the `/happ` URL. Happ decodes the base64 share-link b
 Happ uses each node's country flag as its icon. The managed bundle is empty
 when there are no eligible nodes.
 
-## On-Mac probe (launchd)
+## On-demand Happ pilot
 
-The probe runs **inside** the restricted network and is the authority on reachability
-(CI runners abroad can't see RU blocking). It uses a temporary host route via your real
-gateway to bypass Surge Enhanced Mode.
-
-```bash
-# allow passwordless route (visudo):  <user> ALL=(root) NOPASSWD: /sbin/route
-cp agent/com.outpost.probe.plist ~/Library/LaunchAgents/   # edit paths first
-launchctl load ~/Library/LaunchAgents/com.outpost.probe.plist
-```
+Pilot nodes are ordered manually. Start with one HOSTKEY VM in Amsterdam and
+qualify its assigned IP with Happ. MivoCloud in Chisinau is the next independent candidate. See the
+[order and measurement notes](docs/happ-pilot.ru.md) and [pilot commands](docs/pilot-operations.md).
+The Mac runs probes only on request. The legacy TCP diagnostic remains available as
+`uv run outpost probe`.
 
 ## CI (GitHub Actions)
 
@@ -259,7 +254,7 @@ publishing).
 outpost/            Python package (models, providers, render, orchestrator, monitor, rotate, cli)
 server/             singbox.json.tpl + bootstrap.sh
 worker/             Cloudflare Worker (token-gated subscription)
-agent/              on-Mac launchd reachability probe
+agent/              on-demand Mac reachability probe
 state/              registry.yaml + inventory.enc.yaml (manual commits only)
 .github/workflows/  publish-subscriptions + fallback mirror
 tests/              pytest suite

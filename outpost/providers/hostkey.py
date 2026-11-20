@@ -144,7 +144,9 @@ class HostkeyProvider(BaseProvider):
             return
         try:
             info = self._post("auth", "info")
-            result = info.get("result") if isinstance(info.get("result"), dict) else {}
+            result = info.get("result")
+            if not isinstance(result, dict):
+                return
             if result.get("currency_code") and not self._currency_code:
                 self._currency_code = str(result["currency_code"])
             if result.get("whmcs_location") and not self._whmcs_location:
@@ -204,7 +206,7 @@ class HostkeyProvider(BaseProvider):
         os_id: str,
         root_password: str,
     ) -> dict:
-        fields = {
+        fields: dict = {
             "id": stock_id,
             "root_pass": root_password,
             "deploy_data": self._deploy_period(spec, ref),
@@ -446,7 +448,9 @@ class HostkeyProvider(BaseProvider):
             body = self._post("eq", "unified_server_search", query=hostname)
         except ProviderError:
             return None
-        results = body.get("results") if isinstance(body.get("results"), dict) else {}
+        results = body.get("results")
+        if not isinstance(results, dict):
+            return None
         for row in results.get("servers") or []:
             if not isinstance(row, dict):
                 continue
@@ -497,7 +501,7 @@ class HostkeyProvider(BaseProvider):
             raise ProviderError("hostkey create requires an os_id (spec.os_ref or product_ref)")
 
         root_password = self._generate_root_password()
-        fields_base = {
+        fields_base: dict = {
             "preset": str(preset),
             "location_name": str(location),
             "os_id": str(os_id),

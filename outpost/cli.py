@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -14,11 +15,15 @@ from rich.table import Table
 from . import store
 from .config import settings
 from .models import Inventory
+from .pilot import app as pilot_app
 from .providers import MANUAL_PROVIDERS, ProviderError, get_provider
 
 app = typer.Typer(
-    add_completion=False, help="Automated proxy fleet: provision, monitor, rotate, render subscriptions."
+    pretty_exceptions_show_locals=False,
+    add_completion=False,
+    help="Automated proxy fleet: provision, monitor, rotate, render subscriptions.",
 )
+app.add_typer(pilot_app, name="pilot")
 console = Console()
 
 
@@ -49,7 +54,9 @@ def discover(
     elif what == "os":
         data = client.list_os()
     elif what == "traffic_plans":
-        if provider.lower() != "hostkey":
+        from .providers.hostkey import HostkeyProvider
+
+        if not isinstance(client, HostkeyProvider):
             raise typer.BadParameter("traffic_plans is only supported for hostkey")
         data = client.list_traffic_plans(preset, location)
     elif what == "regions":
@@ -97,6 +104,7 @@ def adopt(
         None, "--password", help="root password for first login (else SSH key is used)"
     ),
     provider: str = typer.Option("byo", "--provider", "-p", help="provider tag (e.g. aeza)"),
+    pilot: bool = typer.Option(False, "--pilot", help="Install XHTTP and Gecko and qualify Happ profiles"),
     service_id: Optional[str] = typer.Option(
         None, "--service-id", help="provider service id, so the node stays manageable"
     ),
@@ -124,6 +132,7 @@ def adopt(
             root_password=password,
             provider_name=provider,
             provider_ref=provider_ref,
+            pilot=pilot,
             save=_save,
         )
     except RuntimeError as exc:
@@ -205,8 +214,9 @@ def render(
 
     if not surge and not happ:
         surge = happ = True
-    if happ and settings.happ_socks_url and out is None:
-        raise typer.BadParameter("Use --out when OUTPOST_HAPP_SOCKS_URL is configured.")
+    control_path = os.getenv("OUTPOST_HAPP_CONTROL_FILE")
+    if happ and (settings.happ_socks_url or control_path) and out is None:
+        raise typer.BadParameter("Use --out when private Happ entries are configured.")
 
     inv = _load_inv()
     outputs = {}
@@ -214,14 +224,23 @@ def render(
         outputs["outpost.surge.conf"] = render_surge(inv)
     if happ:
         try:
-            outputs["outpost.happ.txt"] = render_happ(inv, socks_url=settings.happ_socks_url)
+            outputs["outpost.happ.txt"] = render_happ(
+                inv,
+                socks_url=settings.happ_socks_url,
+                control_link=Path(control_path).read_text().strip() if control_path else None,
+            )
         except ValueError as exc:
             raise typer.BadParameter(str(exc)) from None
 
     if out:
         out.mkdir(parents=True, exist_ok=True)
         for fname, content in outputs.items():
-            (out / fname).write_text(content)
+            from .pilot import private_file
+
+            if fname == "outpost.happ.txt" and not content and (out / fname).exists():
+                console.print("[yellow]empty Happ render; preserving previous file[/yellow]")
+                continue
+            private_file(out / fname, content)
             console.print(f"[green]wrote[/green] {out / fname}")
     else:
         for fname, content in outputs.items():
@@ -345,7 +364,11 @@ def probe(
     resolver = dns or settings.lan_dns
 
     inv = _load_inv()
-    targets = [n for n in inv.nodes if n.ip and (node_id is None or n.id == node_id)]
+    targets = [
+        n for n in inv.nodes if n.ip and "happ-pilot" not in n.tags and (node_id is None or n.id == node_id)
+    ]
+    if node_id and not targets:
+        raise typer.BadParameter("Select a legacy node or use pilot run --node for a Happ pilot")
     for n in targets:
         if not n.ip:
             continue

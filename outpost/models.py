@@ -59,6 +59,8 @@ class NodeSecrets(BaseModel):
 class NodePorts(BaseModel):
     hysteria2: int = 443
     trojan: int = 8443
+    xhttp: int = 9443
+    gecko: int = 2443
     vless_reality: int = 2053  # primary; xray also listens on 443 (see xray.py)
 
 
@@ -90,6 +92,7 @@ class Node(BaseModel):
     secrets: Optional[NodeSecrets] = None
     health: HealthCheck = Field(default_factory=HealthCheck)
     tags: List[str] = Field(default_factory=list)
+    happ_approved: List[str] = Field(default_factory=list)  # hashes of qualified pilot profiles
 
     # provider-native identifiers needed to manage / destroy the resource
     provider_ref: Dict[str, str] = Field(default_factory=dict)
