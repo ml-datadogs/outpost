@@ -31,6 +31,11 @@ Set `HAPP_PROVIDER_ID` in the Kubernetes Deployment to send Happ's optional
 Happ provider account. Happ checks Premium status on its own schedule.
 [Provider ID setup](https://docs.happ-proxy.com/getting-started/how-to-start)
 
+The Kubernetes configuration passes its `color-profile.json` as
+`HAPP_COLOR_PROFILE`. The provider theme is documented for iOS clients. To reset
+the theme on those clients, serve `resetcolors` as the profile value.
+[Theme settings](https://www.happ.su/main/dev-docs/app-management#themes-ios-only)
+
 To refresh the feed, set `OUTPOST_HAPP_SOCKS_URL` to the current authenticated
 `socks5://user:password@host:port` URL from the working Surge entry. Percent-encode
 special characters in the username and password. With the inventory decryption

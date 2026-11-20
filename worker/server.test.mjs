@@ -13,6 +13,7 @@ const entrypoint = fileURLToPath(new URL("./server.mjs", import.meta.url));
 const token = "a".repeat(64);
 const feed = Buffer.from("socks://test@proxy.example:1080#Test").toString("base64");
 const providerId = "Test1234";
+const profile = { backgroundColors: ["#101C2CFF", "#14283DFF"], buttonColor: "#54DEC7FF" };
 
 async function start(t, body = feed) {
   const directory = await mkdtemp(join(tmpdir(), "outpost-server-"));
@@ -22,7 +23,13 @@ async function start(t, body = feed) {
     writeFile(join(directory, "happ"), body),
   ]);
   const child = spawn(process.execPath, [entrypoint], {
-    env: { ...process.env, OUTPOST_SECRET_DIR: directory, PORT: "0", HAPP_PROVIDER_ID: providerId },
+    env: {
+      ...process.env,
+      OUTPOST_SECRET_DIR: directory,
+      PORT: "0",
+      HAPP_PROVIDER_ID: providerId,
+      HAPP_COLOR_PROFILE: JSON.stringify(profile, null, 2),
+    },
     stdio: ["ignore", "pipe", "pipe"],
   });
   const exited = once(child, "close");
@@ -47,12 +54,14 @@ test("serves only the private Happ feed without logging its URL", async (t) => {
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("profile-title"), "Outpost");
   assert.equal(response.headers.get("providerid"), providerId);
+  assert.equal(response.headers.get("color-profile"), JSON.stringify(profile));
   assert.equal(response.headers.get("cache-control"), "no-store");
   assert.equal(await response.text(), feed);
 
   const head = await fetch(`${origin}/${token}/happ`, { method: "HEAD" });
   assert.equal(head.headers.get("profile-title"), "Outpost");
   assert.equal(head.headers.get("providerid"), providerId);
+  assert.equal(head.headers.get("color-profile"), JSON.stringify(profile));
   assert.equal(await head.text(), "");
   for (const [path, status, method] of [
     ["/wrong/happ", 403, "GET"],
@@ -63,6 +72,7 @@ test("serves only the private Happ feed without logging its URL", async (t) => {
     assert.equal(rejected.status, status);
     assert.equal(rejected.headers.get("profile-title"), null);
     assert.equal(rejected.headers.get("providerid"), null);
+    assert.equal(rejected.headers.get("color-profile"), null);
     assert.ok(!(await rejected.text()).includes(feed));
   }
   child.kill();
@@ -77,9 +87,31 @@ test("omits the Provider ID for unconfigured Happ feeds and other clients", asyn
     const response = await worker.fetch(new Request(`https://test.local/${token}/${route}`), {
       ...env,
       HAPP_PROVIDER_ID: id,
+      HAPP_COLOR_PROFILE: JSON.stringify(profile),
     });
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("providerid"), null);
+    assert.equal(response.headers.get("color-profile"), null);
+  }
+});
+
+test("accepts an explicit theme reset and ignores malformed profiles", async () => {
+  const request = new Request(`https://test.local/${token}/happ`);
+  const env = {
+    SUB_TOKEN: token,
+    HAPP_PROVIDER_ID: providerId,
+    SUBS: { async get() { return feed; } },
+  };
+  for (const [color, expected] of [
+    ["resetcolors", "resetcolors"],
+    ["[", null],
+    ["null", null],
+    ["[]", null],
+    ['{"color":"🧭"}', null],
+  ]) {
+    const response = await worker.fetch(request, { ...env, HAPP_COLOR_PROFILE: color });
+    assert.equal(response.headers.get("color-profile"), expected);
+    assert.equal(await response.text(), feed);
   }
 });
 

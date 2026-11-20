@@ -12,6 +12,20 @@
  * for the fallback bundles (see docs/fallbacks.md). The path token is matched
  * against the SUB_TOKEN secret because surge/happ contain live proxy credentials.
  */
+function colorProfileHeader(value) {
+  if (typeof value !== "string") return;
+  if (value.trim() === "resetcolors") return "resetcolors";
+
+  try {
+    const profile = JSON.parse(value);
+    if (!profile || typeof profile !== "object" || Array.isArray(profile)) return;
+    const json = JSON.stringify(profile);
+    if (/^[\x20-\x7E]+$/.test(json)) return json;
+  } catch {
+    // A misconfigured theme should not prevent clients from downloading the feed.
+  }
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -45,6 +59,8 @@ export default {
       headers["profile-title"] = "Outpost";
       if (typeof env.HAPP_PROVIDER_ID === "string" && /^[A-Za-z0-9]{8}$/.test(env.HAPP_PROVIDER_ID)) {
         headers.providerid = env.HAPP_PROVIDER_ID;
+        const profile = colorProfileHeader(env.HAPP_COLOR_PROFILE);
+        if (profile) headers["color-profile"] = profile;
       }
     }
     return new Response(body, { headers });
