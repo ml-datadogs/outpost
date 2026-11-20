@@ -7,9 +7,12 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
+import worker from "./src/index.js";
+
 const entrypoint = fileURLToPath(new URL("./server.mjs", import.meta.url));
 const token = "a".repeat(64);
 const feed = Buffer.from("socks://test@proxy.example:1080#Test").toString("base64");
+const providerId = "Test1234";
 
 async function start(t, body = feed) {
   const directory = await mkdtemp(join(tmpdir(), "outpost-server-"));
@@ -19,7 +22,7 @@ async function start(t, body = feed) {
     writeFile(join(directory, "happ"), body),
   ]);
   const child = spawn(process.execPath, [entrypoint], {
-    env: { ...process.env, OUTPOST_SECRET_DIR: directory, PORT: "0" },
+    env: { ...process.env, OUTPOST_SECRET_DIR: directory, PORT: "0", HAPP_PROVIDER_ID: providerId },
     stdio: ["ignore", "pipe", "pipe"],
   });
   const exited = once(child, "close");
@@ -43,11 +46,13 @@ test("serves only the private Happ feed without logging its URL", async (t) => {
   const response = await fetch(`${origin}/${token}/happ`);
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("profile-title"), "Outpost");
+  assert.equal(response.headers.get("providerid"), providerId);
   assert.equal(response.headers.get("cache-control"), "no-store");
   assert.equal(await response.text(), feed);
 
   const head = await fetch(`${origin}/${token}/happ`, { method: "HEAD" });
   assert.equal(head.headers.get("profile-title"), "Outpost");
+  assert.equal(head.headers.get("providerid"), providerId);
   assert.equal(await head.text(), "");
   for (const [path, status, method] of [
     ["/wrong/happ", 403, "GET"],
@@ -57,12 +62,25 @@ test("serves only the private Happ feed without logging its URL", async (t) => {
     const rejected = await fetch(origin + path, { method });
     assert.equal(rejected.status, status);
     assert.equal(rejected.headers.get("profile-title"), null);
+    assert.equal(rejected.headers.get("providerid"), null);
     assert.ok(!(await rejected.text()).includes(feed));
   }
   child.kill();
   await exited;
   assert.ok(!logs.join("").includes(token));
   assert.ok(!logs.join("").includes(feed));
+});
+
+test("omits the Provider ID for unconfigured Happ feeds and other clients", async () => {
+  const env = { SUB_TOKEN: token, SUBS: { async get() { return feed; } } };
+  for (const [route, id] of [["happ", undefined], ["happ", "invalid id"], ["surge", providerId]]) {
+    const response = await worker.fetch(new Request(`https://test.local/${token}/${route}`), {
+      ...env,
+      HAPP_PROVIDER_ID: id,
+    });
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("providerid"), null);
+  }
 });
 
 test("does not start with an empty feed", async (t) => {

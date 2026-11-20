@@ -11,6 +11,7 @@ if (!/^[a-f0-9]{64}$/.test(token) || !feed) {
 }
 
 const env = {
+  HAPP_PROVIDER_ID: process.env.HAPP_PROVIDER_ID,
   SUB_TOKEN: token,
   SUBS: { async get(kind) { return kind === "happ" ? feed : null; } },
 };

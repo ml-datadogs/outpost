@@ -26,6 +26,11 @@ When changing the server, update the GitOps copy of `worker/server.mjs`,
 `worker/src/index.js`, and `worker/package.json` together. The ConfigMap hash
 rolls the pod when the mounted code changes.
 
+Set `HAPP_PROVIDER_ID` in the Kubernetes Deployment to send Happ's optional
+`providerid` response header. Add `outpost.dirtyinfra.xyz` to the corresponding
+Happ provider account. Happ checks Premium status on its own schedule.
+[Provider ID setup](https://docs.happ-proxy.com/getting-started/how-to-start)
+
 To refresh the feed, set `OUTPOST_HAPP_SOCKS_URL` to the current authenticated
 `socks5://user:password@host:port` URL from the working Surge entry. Percent-encode
 special characters in the username and password. With the inventory decryption

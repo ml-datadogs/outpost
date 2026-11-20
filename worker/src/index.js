@@ -43,6 +43,9 @@ export default {
     }
     if (kind === "happ") {
       headers["profile-title"] = "Outpost";
+      if (typeof env.HAPP_PROVIDER_ID === "string" && /^[A-Za-z0-9]{8}$/.test(env.HAPP_PROVIDER_ID)) {
+        headers.providerid = env.HAPP_PROVIDER_ID;
+      }
     }
     return new Response(body, { headers });
   },
