@@ -13,6 +13,7 @@ if (!/^[a-f0-9]{64}$/.test(token) || !feed) {
 const env = {
   HAPP_COLOR_PROFILE: process.env.HAPP_COLOR_PROFILE,
   HAPP_PROVIDER_ID: process.env.HAPP_PROVIDER_ID,
+  HAPP_ROUTING_PROFILE: process.env.HAPP_ROUTING_PROFILE,
   SUB_TOKEN: token,
   SUBS: { async get(kind) { return kind === "happ" ? feed : null; } },
 };

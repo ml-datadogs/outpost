@@ -36,6 +36,14 @@ The Kubernetes configuration passes its `color-profile.json` as
 the theme on those clients, serve `resetcolors` as the profile value.
 [Theme settings](https://www.happ.su/main/dev-docs/app-management#themes-ios-only)
 
+The deployment reads `HAPP_ROUTING_PROFILE` from the GitOps ConfigMap's
+`routing-profile.json`. The server sends the UTF-8 JSON as a base64
+`happ://routing/onadd/` link in the `routing` response header. Keep the
+profile name `Outpost Split` across updates. Refresh Outpost in Happ and
+reconnect to apply its rules. For rollback, set the environment variable
+to the literal `happ://routing/off`, sync the deployment, then refresh
+and reconnect on the phone. [Happ routing](https://www.happ.su/main/dev-docs/routing)
+
 To refresh the feed, set `OUTPOST_HAPP_SOCKS_URL` to the current authenticated
 `socks5://user:password@host:port` URL from the working Surge entry. Percent-encode
 special characters in the username and password. With the inventory decryption

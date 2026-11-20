@@ -14,6 +14,13 @@ const token = "a".repeat(64);
 const feed = Buffer.from("socks://test@proxy.example:1080#Test").toString("base64");
 const providerId = "Test1234";
 const profile = { backgroundColors: ["#101C2CFF", "#14283DFF"], buttonColor: "#54DEC7FF" };
+const routing = {
+  Name: "Outpost Split — РФ",
+  GlobalProxy: "true",
+  DirectSites: ["geosite:category-ru"],
+  DirectIp: ["geoip:ru"],
+  DomainStrategy: "IPIfNonMatch",
+};
 
 async function start(t, body = feed) {
   const directory = await mkdtemp(join(tmpdir(), "outpost-server-"));
@@ -29,6 +36,7 @@ async function start(t, body = feed) {
       PORT: "0",
       HAPP_PROVIDER_ID: providerId,
       HAPP_COLOR_PROFILE: JSON.stringify(profile, null, 2),
+      HAPP_ROUTING_PROFILE: JSON.stringify(routing, null, 2),
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -55,6 +63,10 @@ test("serves only the private Happ feed without logging its URL", async (t) => {
   assert.equal(response.headers.get("profile-title"), "Outpost");
   assert.equal(response.headers.get("providerid"), providerId);
   assert.equal(response.headers.get("color-profile"), JSON.stringify(profile));
+  const routingHeader = response.headers.get("routing");
+  assert.match(routingHeader, /^happ:\/\/routing\/onadd\//);
+  const encodedProfile = routingHeader.slice("happ://routing/onadd/".length);
+  assert.deepEqual(JSON.parse(Buffer.from(encodedProfile, "base64").toString("utf8")), routing);
   assert.equal(response.headers.get("cache-control"), "no-store");
   assert.equal(await response.text(), feed);
 
@@ -62,6 +74,7 @@ test("serves only the private Happ feed without logging its URL", async (t) => {
   assert.equal(head.headers.get("profile-title"), "Outpost");
   assert.equal(head.headers.get("providerid"), providerId);
   assert.equal(head.headers.get("color-profile"), JSON.stringify(profile));
+  assert.equal(head.headers.get("routing"), routingHeader);
   assert.equal(await head.text(), "");
   for (const [path, status, method] of [
     ["/wrong/happ", 403, "GET"],
@@ -73,6 +86,7 @@ test("serves only the private Happ feed without logging its URL", async (t) => {
     assert.equal(rejected.headers.get("profile-title"), null);
     assert.equal(rejected.headers.get("providerid"), null);
     assert.equal(rejected.headers.get("color-profile"), null);
+    assert.equal(rejected.headers.get("routing"), null);
     assert.ok(!(await rejected.text()).includes(feed));
   }
   child.kill();
@@ -119,4 +133,18 @@ test("does not start with an empty feed", async (t) => {
   const { exited, logs } = await start(t, "");
   assert.equal((await exited)[0], 1);
   assert.match(logs.join(""), /nonempty Happ feed/);
+});
+
+test("keeps the feed usable with absent, invalid, or disabled routing", async () => {
+  const env = { SUB_TOKEN: token, SUBS: { async get() { return feed; } } };
+  const request = new Request(`https://test.local/${token}/happ`);
+  for (const value of [undefined, "[", "null", "{}", '{"Name":"Split","DirectIp":"geoip:ru"}', "happ://routing/off"]) {
+    const response = await worker.fetch(request, { ...env, HAPP_ROUTING_PROFILE: value });
+    assert.equal(response.headers.get("routing"), value === "happ://routing/off" ? value : null);
+    assert.equal(await response.text(), feed);
+  }
+  const surge = await worker.fetch(new Request(`https://test.local/${token}/surge`), {
+    ...env, HAPP_ROUTING_PROFILE: JSON.stringify(routing),
+  });
+  assert.equal(surge.headers.get("routing"), null);
 });

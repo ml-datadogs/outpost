@@ -26,6 +26,25 @@ function colorProfileHeader(value) {
   }
 }
 
+function routingHeader(value) {
+  if (typeof value !== "string") return;
+  if (value.trim() === "happ://routing/off") return "happ://routing/off";
+
+  try {
+    const profile = JSON.parse(value);
+    if (typeof profile?.Name !== "string" || !profile.Name.trim()) return;
+    for (const key of ["DirectSites", "DirectIp", "ProxySites", "ProxyIp", "BlockSites", "BlockIp"]) {
+      const rules = profile[key];
+      if (rules !== undefined && !(Array.isArray(rules) && rules.every(rule => typeof rule === "string"))) return;
+    }
+    const bytes = new TextEncoder().encode(JSON.stringify(profile));
+    const binary = Array.from(bytes, byte => String.fromCharCode(byte)).join("");
+    return "happ://routing/onadd/" + btoa(binary);
+  } catch {
+    // Keep the server list available if the routing configuration is invalid.
+  }
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -57,6 +76,10 @@ export default {
     }
     if (kind === "happ") {
       headers["profile-title"] = "Outpost";
+      if (request.method === "GET" || request.method === "HEAD") {
+        const routing = routingHeader(env.HAPP_ROUTING_PROFILE);
+        if (routing) headers.routing = routing;
+      }
       if (typeof env.HAPP_PROVIDER_ID === "string" && /^[A-Za-z0-9]{8}$/.test(env.HAPP_PROVIDER_ID)) {
         headers.providerid = env.HAPP_PROVIDER_ID;
         const profile = colorProfileHeader(env.HAPP_COLOR_PROFILE);
