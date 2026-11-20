@@ -1,10 +1,40 @@
-# Happ client — working setup
+# Happ client setup
 
-Validated on **Happ 4.11+** (Xray-core) from a restricted network (RU ISP → NL VPS).
+## Current status (2026-11-20)
 
-## Summary
+The managed inventory renders zero Happ links. GitHub Actions still renders
+the subscription and skips publishing to Cloudflare KV. The separate IPRoyal
+Netherlands SOCKS5 endpoint passed a Surge policy test and has a direct Happ
+setup documented in the [playbook](claude-account-playbook.md).
 
-| Layer | What works | What often fails |
+The managed Happ feed keeps its base64 share-link format. The Worker sets the
+subscription title to **Outpost**. Eligible nodes have a country flag in the
+link label, which Happ displays as the server icon. Both features use standard
+Happ settings. [Flags](https://www.happ.su/main/dev-docs/emoji) ·
+[Subscription settings](https://www.happ.su/main/dev-docs/app-management)
+
+## Private Kubernetes feed
+
+The GitOps service uses `https://outpost.dirtyinfra.xyz/<token>/happ`. Its
+HTTPS route points to the Cilium Gateway in `k8s-prod`. The Node service runs
+the same token check and Happ response as the Worker. Cloudflare DNS resolves
+the hostname to the cluster's existing load balancer.
+
+To refresh the feed, set `OUTPOST_HAPP_SOCKS_URL` to the current authenticated
+`socks5://user:password@host:port` URL from the working Surge entry. Percent-encode
+special characters in the username and password. With the inventory decryption
+key available, run `uv run outpost render --happ --out <private-dir>` under a
+restrictive umask. Update the `happ` value in the GitOps SopsSecret with the
+new file contents and bump the deployment's secret revision. The token only
+needs to change when rotating access. Treat both the full import URL and the
+rendered file as credentials.
+
+## Historical connectivity results
+
+These results come from an earlier Happ 4.11+ test on a Russian ISP using a
+Netherlands VPS.
+
+| Layer | What worked | What often failed |
 |-------|------------|------------------|
 | **Happ + Reality** | **Yes** — primary approach | — |
 | Hy2 / Trojan in Happ | Sometimes on LTE | Home ISP: UDP QUIC blocked, TCP TLS DPI |

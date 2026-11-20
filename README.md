@@ -3,11 +3,26 @@
 Локальная конфигурация Surge хранится в [surge/](surge/README.md): читаемая версия
 без секретов и точный зашифрованный снимок для восстановления.
 
-Automated proxy fleet for restricted networks. Outpost provisions fresh VPS proxies
-(**Vultr** primary; **Zomro** / adopt-tier **iphoster**; Aeza + Hostkey parked), bootstraps a
-[`sing-box`](https://sing-box.sagernet.org/) + Xray stack over SSH, and renders **one
-token-gated subscription URL** that auto-updates in both **Surge** and **Happ** — with
-CI publishes subscriptions; rotate blocked nodes **locally** when needed.
+Outpost contains tooling to provision and rotate VPS proxies, bootstrap a
+[`sing-box`](https://sing-box.sagernet.org/) + Xray stack over SSH, manage per-node
+DNS, and publish separate token-gated subscriptions for **Surge** and **Happ**.
+
+## Operating status (2026-11-20)
+
+- **Managed fleet:** Zero nodes eligible for either subscription. The Vultr account
+  returned zero instances. The inventory contains one Polish IPhoster node marked
+  down on November 1. Its TCP ports accepted connections during the review, but
+  the Trojan TLS handshake failed. VPS allocation is unverified.
+- **Local Surge:** Warsaw Snell, Singapore Snell, and the IPRoyal Netherlands
+  residential SOCKS5 exit passed live policy tests. These are configured separately
+  from the managed fleet. The [Happ playbook](docs/claude-account-playbook.md)
+  documents a direct Happ setup for the same Netherlands endpoint.
+- **Subscriptions:** GitHub Actions renders the managed feeds and fetches the
+  fallback bundles. Both skip Cloudflare KV writes because `CF_OK` is unset. The
+  checked-in Worker config has a placeholder namespace ID. Any earlier Worker
+  deployment is unverified.
+- **Monitoring:** The Mac launchd probe is unloaded. The CLI remains available
+  for local monitoring, provisioning, and rotation.
 
 Optional second hop: set `OUTPOST_AI_PROXY_URL` (Static Residential / ISP SOCKS5) so
 AI & billing domains exit via a clean residential ASN — see
@@ -36,8 +51,8 @@ three (two Reality links: ports 2053 and 443). Both render from one source of tr
 A `(provider, region)` may host an exit only if **all three** hold:
 
 1. **Not Russia** — `region.country != RU` (a RU exit bypasses nothing).
-2. **Reachable** — the on-Mac probe confirmed the region's canary IP is reachable from
-   your ISP (`region.enabled`).
+2. **Enabled** — `region.enabled` allows selection. The on-Mac probe can update
+   the flag for regions with configured canaries.
 3. **Policy OK** — the provider accepts RU users + usable payment (`provider.policy_ok`).
 
 Hetzner is kept in the registry but excluded on gate 3 (it bans/suspends RU/CIS
@@ -57,8 +72,8 @@ options) is more moving parts than it currently earns. Consequences:
 
 - `provision` / `rotate` never target it, and CI carries no `HOSTKEY_*` secrets.
 - `outpost/providers/hostkey.py` and its tests stay intact and passing.
-- Already-adopted hostkey nodes keep running, keep rendering into subscriptions,
-  and stay destroyable (`destroy` still resolves the provider client).
+- An adopted Hostkey node can still render while eligible and can be managed
+  with `destroy`.
 
 To bring it back: set `policy_ok: true`, restore the `HOSTKEY_*` credentials in
 `.env` and the workflow env.
@@ -114,6 +129,7 @@ export SOPS_AGE_KEY_FILE=~/.config/sops/age/outpost.key
 
 | Var | What |
 |---|---|
+| `VULTR_API_KEY` | Vultr API key for discovery, provisioning, and rotation |
 | `AEZA_API_KEY` | https://my.aeza.net/settings/apikeys |
 | `ZOMRO_AUTH` | Zomro API session token (api.zomro.com) |
 | `HOSTKEY_*` | **parked** — see [Parked providers](#parked-providers); not needed while `policy_ok: false` |
@@ -127,14 +143,11 @@ export SOPS_AGE_KEY_FILE=~/.config/sops/age/outpost.key
 
 ```bash
 # 1. Discover live regions/products and fill state/registry.yaml product_ref values
-uv run outpost discover --provider aeza  --what regions
-uv run outpost discover --provider zomro --what products
-uv run outpost discover --provider zomro --what os        # note the OS uid for Zomro
-# (hostkey is parked; see "Parked providers")
+uv run outpost discover --provider vultr --what regions
+uv run outpost discover --provider vultr --what products
 
 # 2. Provision an exit (picks an eligible non-RU region automatically)
-uv run outpost provision --provider zomro
-uv run outpost provision --provider aeza --region Netherlands
+uv run outpost provision --provider vultr --region ams
 
 # 3. See the fleet
 uv run outpost list
@@ -149,7 +162,7 @@ uv run outpost adopt --provider iphoster --ip 1.2.3.4 --country DE --password <r
 # 6. Give nodes their own DNS name + real cert (after setting OUTPOST_DNS_ZONE)
 uv run outpost recert          # all active nodes; or: recert <id>
 
-# Monitoring / rotation (also run by CI)
+# Local monitoring / rotation
 uv run outpost probe          # reachability from inside the restricted network (needs sudo route)
 uv run outpost monitor        # liveness + status transitions
 uv run outpost rotate --reap  # replace blocked/down nodes, destroy retired
@@ -179,7 +192,8 @@ URLs (replace host + token):
 - Emergency public configs (tier 3, [docs/fallbacks.md](docs/fallbacks.md)):
   `…/<SUB_TOKEN>/fallback` and `…/<SUB_TOKEN>/fallback-white`
 
-CI publishes the rendered bodies into KV (`surge` / `happ` keys) after each render.
+With `CF_OK=true` and Cloudflare credentials configured, CI publishes the
+rendered bodies into KV (`surge` / `happ` keys) after each render.
 To publish manually:
 
 ```bash
@@ -193,7 +207,9 @@ the managed proxies and keeps them updated.
 
 ### Add it in Happ
 Add subscription → paste the `/happ` URL. Happ decodes the base64 share-link bundle
-(Hysteria2 + Trojan + Reality) and refreshes automatically.
+(Hysteria2 + Trojan + Reality). The Worker supplies the **Outpost** title and
+Happ uses each node's country flag as its icon. The managed bundle is empty
+when there are no eligible nodes.
 
 ## On-Mac probe (launchd)
 
@@ -210,7 +226,7 @@ launchctl load ~/Library/LaunchAgents/com.outpost.probe.plist
 ## CI (GitHub Actions)
 
 `.github/workflows/monitor.yml` (`publish-subscriptions`) renders from the committed
-inventory and publishes to Cloudflare KV. It does **not** mutate or commit
+inventory and can publish to Cloudflare KV. It does **not** mutate or commit
 `state/` (no more `monitor: update fleet state` spam). Run monitor/rotate on a
 Mac when you want inventory changes:
 
@@ -220,9 +236,9 @@ uv run outpost rotate --reap
 # then commit state/inventory.enc.yaml yourself if it changed
 ```
 
-`.github/workflows/fallback.yml` runs every 6 h: `outpost fallback` mirrors the
-tier-3 public configs (igareck/vpn-configs-for-russia) into KV (`fallback` /
-`fallback-white` keys). Required repository **secrets**:
+`.github/workflows/fallback.yml` is scheduled every 6 h. It fetches and validates
+the tier-3 public configs (igareck/vpn-configs-for-russia) and can mirror them
+into KV (`fallback` / `fallback-white` keys). Required repository **secrets**:
 
 `AGE_KEY`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `KV_NAMESPACE_ID`,
 and optionally `OUTPOST_AI_PROXY_URL` (for AI-clean lines in the Surge render).

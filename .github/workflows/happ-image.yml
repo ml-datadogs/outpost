@@ -1,0 +1,36 @@
+name: Happ subscription image
+
+on:
+  push:
+    tags:
+      - "happ-server-v*"
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm --prefix worker test
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        id: publish
+        with:
+          context: worker
+          push: true
+          tags: ghcr.io/ml-datadogs/outpost-happ:${{ github.ref_name }}
+          labels: org.opencontainers.image.source=https://github.com/ml-datadogs/outpost
+      - env:
+          IMAGE_DIGEST: ${{ steps.publish.outputs.digest }}
+        run: echo "ghcr.io/ml-datadogs/outpost-happ@${IMAGE_DIGEST}" >> "$GITHUB_STEP_SUMMARY"

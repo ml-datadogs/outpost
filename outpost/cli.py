@@ -203,15 +203,20 @@ def render(
     """Render Surge and/or Happ subscriptions from the inventory."""
     from .render import render_happ, render_surge
 
-    inv = _load_inv()
     if not surge and not happ:
         surge = happ = True
+    if happ and settings.happ_socks_url and out is None:
+        raise typer.BadParameter("Use --out when OUTPOST_HAPP_SOCKS_URL is configured.")
 
+    inv = _load_inv()
     outputs = {}
     if surge:
         outputs["outpost.surge.conf"] = render_surge(inv)
     if happ:
-        outputs["outpost.happ.txt"] = render_happ(inv)
+        try:
+            outputs["outpost.happ.txt"] = render_happ(inv, socks_url=settings.happ_socks_url)
+        except ValueError as exc:
+            raise typer.BadParameter(str(exc)) from None
 
     if out:
         out.mkdir(parents=True, exist_ok=True)

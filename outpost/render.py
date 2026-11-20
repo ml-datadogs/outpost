@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import base64
 from typing import List, Optional
-from urllib.parse import quote
+from urllib.parse import quote, unquote, urlsplit
 
 from .config import Settings
 from .config import settings as default_settings
@@ -31,8 +31,12 @@ def _secrets(node: Node):
     return node.secrets
 
 
-def _frag(name: str) -> str:
-    return quote(name, safe="")
+def _happ_fragment(node: Node, label: str) -> str:
+    country = node.country
+    if len(country) == 2 and country.isascii() and country.isalpha():
+        flag = "".join(chr(0x1F1E6 + ord(letter) - ord("A")) for letter in country.upper())
+        label = f"{flag} {label}"
+    return quote(label, safe="")
 
 
 def _cert_pin_b64(hex_pin: str) -> str:
@@ -127,7 +131,8 @@ def _link_hysteria2(node: Node) -> str:
     query = _link_query(**params)
     auth = quote(s.hysteria2_password, safe="")
     suffix = f"/?{query}" if query else "/"
-    return f"hysteria2://{auth}@{_link_host(node)}:{node.ports.hysteria2}{suffix}#{_frag(node.name + '-hy2')}"
+    fragment = _happ_fragment(node, f"{node.name}-hy2")
+    return f"hysteria2://{auth}@{_link_host(node)}:{node.ports.hysteria2}{suffix}#{fragment}"
 
 
 def _link_trojan(node: Node) -> str:
@@ -140,9 +145,10 @@ def _link_trojan(node: Node) -> str:
     }
     _happ_cert_pin(params, node)
     query = _link_query(**params)
+    fragment = _happ_fragment(node, f"{node.name}-trojan")
     return (
         f"trojan://{quote(s.trojan_password, safe='')}@{_link_host(node)}:{node.ports.trojan}"
-        f"?{query}#{_frag(node.name + '-trojan')}"
+        f"?{query}#{fragment}"
     )
 
 
@@ -161,7 +167,7 @@ def _link_reality(node: Node, reality_dest: str = DEFAULT_REALITY_DEST, port: Op
         spx="/",
     )
     label = node.name + "-reality" + (f"-{listen_port}" if listen_port != node.ports.vless_reality else "")
-    return f"vless://{s.reality_uuid}@{node.ip}:{listen_port}?{query}#{_frag(label)}"
+    return f"vless://{s.reality_uuid}@{node.ip}:{listen_port}?{query}#{_happ_fragment(node, label)}"
 
 
 def render_happ_links(inv: Inventory, reality_dest: str = DEFAULT_REALITY_DEST) -> List[str]:
@@ -178,7 +184,38 @@ def render_happ_links(inv: Inventory, reality_dest: str = DEFAULT_REALITY_DEST) 
     return links
 
 
-def render_happ(inv: Inventory, reality_dest: str = DEFAULT_REALITY_DEST) -> str:
+def _happ_socks_link(proxy_url: str) -> str:
+    message = "OUTPOST_HAPP_SOCKS_URL must be socks5://user:password@host:port"
+    try:
+        proxy = urlsplit(proxy_url)
+        port = proxy.port
+    except ValueError:
+        raise ValueError(message) from None
+    if (
+        proxy.scheme != "socks5"
+        or not proxy.hostname
+        or not port
+        or not proxy.username
+        or not proxy.password
+        or proxy.path
+        or proxy.query
+        or proxy.fragment
+        or any(character.isspace() for character in proxy_url)
+    ):
+        raise ValueError(message)
+    host = f"[{proxy.hostname}]" if ":" in proxy.hostname else proxy.hostname
+    credentials = f"{unquote(proxy.username)}:{unquote(proxy.password)}"
+    auth = base64.b64encode(credentials.encode("utf-8")).decode("ascii")
+    label = quote("🇳🇱 Netherlands · IPRoyal", safe="")
+    return f"socks://{auth}@{host}:{port}#{label}"
+
+
+def render_happ(
+    inv: Inventory, reality_dest: str = DEFAULT_REALITY_DEST, *, socks_url: Optional[str] = None
+) -> str:
     """Happ universal subscription: base64 of newline-joined share links."""
-    body = "\n".join(render_happ_links(inv, reality_dest))
+    links = render_happ_links(inv, reality_dest)
+    if socks_url:
+        links.insert(0, _happ_socks_link(socks_url))
+    body = "\n".join(links)
     return base64.b64encode(body.encode("utf-8")).decode("ascii")

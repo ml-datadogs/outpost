@@ -44,6 +44,7 @@ class Settings:
 
     # Subscription distribution
     sub_token: Optional[str] = None
+    happ_socks_url: Optional[str] = None
     # Legacy single-node fallback; prefer dns_zone so every node gets its own name.
     tls_domain: Optional[str] = None
 
@@ -84,6 +85,7 @@ class Settings:
             ssh_public_key_file=_expand(os.getenv("OUTPOST_SSH_PUBLIC_KEY_FILE")),
             ssh_private_key_file=_expand(os.getenv("OUTPOST_SSH_PRIVATE_KEY_FILE")),
             sub_token=os.getenv("OUTPOST_SUB_TOKEN") or None,
+            happ_socks_url=os.getenv("OUTPOST_HAPP_SOCKS_URL") or None,
             tls_domain=os.getenv("OUTPOST_TLS_DOMAIN") or None,
             cloudflare_api_token=os.getenv("CLOUDFLARE_API_TOKEN") or None,
             dns_zone=os.getenv("OUTPOST_DNS_ZONE") or None,

@@ -41,6 +41,9 @@ export default {
     if (kind === "surge") {
       headers["content-disposition"] = 'inline; filename="outpost.conf"';
     }
+    if (kind === "happ") {
+      headers["profile-title"] = "Outpost";
+    }
     return new Response(body, { headers });
   },
 };

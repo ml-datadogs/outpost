@@ -1,5 +1,8 @@
 import base64
+from urllib.parse import unquote, urlsplit
 
+import pytest
+from outpost.models import Inventory, NodeStatus
 from outpost.render import render_happ, render_happ_links, render_surge
 
 
@@ -26,6 +29,60 @@ def test_happ_subscription_is_base64(inventory):
     decoded = base64.b64decode(sub).decode()
     assert "hysteria2://" in decoded
     assert "vless://" in decoded
+
+
+@pytest.mark.parametrize("country", ["NL", "nl"])
+def test_happ_subscription_has_country_flags_and_distinct_labels(node, inventory, country):
+    node.country = country
+    decoded = base64.b64decode(render_happ(inventory)).decode()
+    labels = [unquote(urlsplit(link).fragment) for link in decoded.splitlines()]
+    assert labels == [
+        f"🇳🇱 {node.name}-hy2",
+        f"🇳🇱 {node.name}-trojan",
+        f"🇳🇱 {node.name}-reality",
+        f"🇳🇱 {node.name}-reality-443",
+    ]
+
+
+@pytest.mark.parametrize("country", ["", "N", "N1", "NŁ", "NLD"])
+def test_happ_subscription_keeps_plain_labels_without_a_country_code(node, inventory, country):
+    node.country = country
+    link = render_happ_links(inventory)[0]
+    assert unquote(urlsplit(link).fragment) == f"{node.name}-hy2"
+
+
+def test_happ_subscription_excludes_down_nodes(node, inventory):
+    node.status = NodeStatus.DOWN
+    assert render_happ(inventory) == render_happ(Inventory()) == ""
+
+
+def test_happ_can_render_authenticated_socks_with_or_without_managed_nodes(inventory):
+    url = "socks5://test-user:s%C3%ABcret%40proxy@proxy.example:1080"
+    socks_feed = base64.b64decode(render_happ(Inventory(), socks_url=url)).decode().splitlines()
+    assert len(socks_feed) == 1
+    link = socks_feed[0]
+    auth, address = link.removeprefix("socks://").split("@", 1)
+    assert base64.b64decode(auth).decode() == "test-user:sëcret@proxy"
+    assert unquote(address) == "proxy.example:1080#🇳🇱 Netherlands · IPRoyal"
+
+    mixed = base64.b64decode(render_happ(inventory, socks_url=url)).decode().splitlines()
+    assert mixed == [link, *render_happ_links(inventory)]
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://user:pass@host:1080",
+        "socks5://host:1080",
+        "socks5://user:pass@host",
+        "socks5://user:pass@host:70000",
+        "socks5://user:pass@host:1080/path",
+    ],
+)
+def test_happ_rejects_malformed_socks_without_echoing_credentials(url):
+    with pytest.raises(ValueError, match="OUTPOST_HAPP_SOCKS_URL") as error:
+        render_happ(Inventory(), socks_url=url)
+    assert url not in str(error.value)
 
 
 def test_happ_trojan_uses_pcs_not_allow_insecure(node, inventory):

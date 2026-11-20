@@ -6,7 +6,7 @@ a way out.
 
 | Tier | What | Trust | Automation |
 |------|------|-------|------------|
-| 1 | Outpost fleet (aeza / zomro / hostkey) | ours | full (provision + rotate) |
+| 1 | Outpost fleet (Vultr primary) | ours | provision + rotate tooling |
 | 2 | Manual VPS on adopt-tier hosts (**iphoster**) | ours | adopt-only, no API |
 | 3 | Public tested configs (**igareck/vpn-configs-for-russia**) | **untrusted exits** | none (client-side subscription) |
 
@@ -71,23 +71,23 @@ assume the operator can see SNI/metadata and MITM anything not end-to-end encryp
 Never touch banking, mail, or anything credentialed through tier 3 — use it to reach
 messengers/news and to bootstrap repairs of tiers 1–2.
 
-### Our auto-synced mirror (preferred)
+### Cloudflare mirror
 
 CI ([.github/workflows/fallback.yml](../.github/workflows/fallback.yml)) pulls the
-upstream lists every 6 hours (upstream retests every ~2 h), validates and dedupes
-them (`outpost fallback`, see `outpost/fallback.py`), and publishes them to the
-same token-gated Worker as the main subscriptions:
+upstream lists on a six-hour schedule and validates and deduplicates them with
+`outpost fallback`. As of 2026-11-20 it skips Cloudflare KV writes because
+`CF_OK` is unset. With publishing enabled, the same token-gated Worker can serve
+the mirror at:
 
 ```text
 https://outpost-subs.<you>.workers.dev/<SUB_TOKEN>/fallback          # normal (blacklist) mode
 https://outpost-subs.<you>.workers.dev/<SUB_TOKEN>/fallback-white    # whitelist regime
 ```
 
-Use these instead of the raw GitHub URLs from inside RU: Cloudflare stays reachable
-when raw.githubusercontent does not, the sync falls back to a jsDelivr mirror when
-GitHub is unreachable from CI, and a failed/empty fetch aborts the publish so KV
-always keeps the last good version. To refresh manually: `uv run outpost fallback`
-then trigger the workflow, or run it from the Actions tab (workflow_dispatch).
+Use the upstream links below while the hosted mirror is unverified. To fetch and
+validate locally, run `uv run outpost fallback`. The workflow falls back to
+jsDelivr if the GitHub download fails. When publishing is enabled, a failed or
+empty fetch leaves the previously published KV values in place.
 
 ### Upstream URLs (direct, if the Worker itself is down)
 
